@@ -56,7 +56,7 @@ export function BreathingPacer() {
 
   const startBreathing = () => {
     isBreathing.current = true;
-    runOnJS(startHapticLoop)();
+    startHapticLoop();
     
     scale.value = withRepeat(
       withSequence(
@@ -79,7 +79,7 @@ export function BreathingPacer() {
 
   const stopBreathing = () => {
     isBreathing.current = false;
-    runOnJS(stopHapticLoop)();
+    stopHapticLoop();
     cancelAnimation(scale);
     cancelAnimation(opacity);
     scale.value = withTiming(1, { duration: 300 });
