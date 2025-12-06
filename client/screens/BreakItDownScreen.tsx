@@ -11,7 +11,7 @@ import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollV
 import { ThemedText } from "@/components/ThemedText";
 import { EnergySelector } from "@/components/EnergySelector";
 import { StepItem } from "@/components/StepItem";
-import { TimerButton } from "@/components/TimerButton";
+import { VisualTimer } from "@/components/VisualTimer";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useAppStore } from "@/lib/store";
@@ -354,11 +354,8 @@ export default function BreakItDownScreen() {
               Current bite ({completedSteps + 1} of {steps.length})
             </ThemedText>
             <View style={[styles.currentStepCard, { backgroundColor: theme.backgroundDefault }]}>
-              <ThemedText type="h3" style={styles.currentStepText}>
-                {nextIncompleteStep.text}
-              </ThemedText>
-              <View style={styles.timerContainer}>
-                <TimerButton 
+              <View style={styles.visualTimerContainer}>
+                <VisualTimer 
                   minutes={nextIncompleteStep.minutes} 
                   stepText={nextIncompleteStep.text}
                   isActive={activeTimer === nextIncompleteStep.id}
@@ -372,7 +369,7 @@ export default function BreakItDownScreen() {
               >
                 <Feather name="check" size={20} color="#FFFFFF" />
                 <ThemedText style={{ color: "#FFFFFF", fontWeight: "600" }}>
-                  Mark Done
+                  Mark Done (skip timer)
                 </ThemedText>
               </Pressable>
             </View>
@@ -1108,6 +1105,11 @@ const styles = StyleSheet.create({
   timerContainer: {
     marginBottom: Spacing.lg,
   },
+  visualTimerContainer: {
+    marginBottom: Spacing.lg,
+    alignItems: "center",
+    width: "100%",
+  },
   markDoneButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -1115,7 +1117,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.xl,
     borderRadius: BorderRadius.sm,
-    borderWidth: 1,
   },
   allDoneContainer: {
     flex: 1,
