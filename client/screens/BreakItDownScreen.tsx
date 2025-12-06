@@ -15,6 +15,7 @@ import { TimerButton } from "@/components/TimerButton";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useAppStore } from "@/lib/store";
+import { useSnackbarStore } from "@/lib/snackbarStore";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 import type { EnergyLevel, Step } from "@/lib/types";
 
@@ -27,7 +28,8 @@ export default function BreakItDownScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "BreakItDown">>();
 
-  const { tasks, addTask, updateTask, toggleStepComplete, hapticsEnabled } = useAppStore();
+  const { tasks, addTask, updateTask, toggleStepComplete, restoreStep, hapticsEnabled } = useAppStore();
+  const showSnackbar = useSnackbarStore((s) => s.show);
   
   const existingTask = route.params?.taskId 
     ? tasks.find(t => t.id === route.params?.taskId)
@@ -123,8 +125,24 @@ export default function BreakItDownScreen() {
     if (hapticsEnabled) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
+    const removedStep = steps.find(s => s.id === stepId);
+    const removedIndex = steps.findIndex(s => s.id === stepId);
+    
+    if (!removedStep) return;
+    
+    const stepSnapshot: Step = { ...removedStep };
+    const indexSnapshot = removedIndex;
+    
     setSteps(prev => prev.filter(s => s.id !== stepId));
-  }, [hapticsEnabled]);
+    
+    showSnackbar("Bite removed", () => {
+      setSteps(prev => {
+        const newSteps = [...prev];
+        newSteps.splice(indexSnapshot, 0, stepSnapshot);
+        return newSteps;
+      });
+    });
+  }, [hapticsEnabled, steps, showSnackbar]);
 
   const handleEditStep = useCallback((stepId: string, text: string, minutes: number) => {
     if (hapticsEnabled) {
@@ -152,18 +170,42 @@ export default function BreakItDownScreen() {
     });
   }, [hapticsEnabled]);
 
+  const activeDays = useAppStore((s) => s.activeDays);
+
   const handleToggleStep = useCallback((stepId: string) => {
     if (hapticsEnabled) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
+    const step = steps.find(s => s.id === stepId);
+    if (!step) return;
+    
+    const wasCompleted = step.completed;
+    const stepSnapshot: Step = JSON.parse(JSON.stringify(step));
+    const today = new Date().toISOString().split("T")[0];
+    
     if (existingTask) {
       toggleStepComplete(existingTask.id, stepId);
     }
     setSteps(prev => prev.map(s => 
-      s.id === stepId ? { ...s, completed: !s.completed } : s
+      s.id === stepId ? { 
+        ...s, 
+        completed: !s.completed,
+        completedAt: !s.completed ? new Date().toISOString() : undefined,
+      } : s
     ));
     setActiveTimer(null);
-  }, [existingTask, toggleStepComplete, hapticsEnabled]);
+    
+    if (!wasCompleted) {
+      showSnackbar("Bite complete", () => {
+        if (existingTask) {
+          restoreStep(existingTask.id, stepSnapshot, today);
+        }
+        setSteps(prev => prev.map(s => 
+          s.id === stepId ? stepSnapshot : s
+        ));
+      });
+    }
+  }, [existingTask, toggleStepComplete, restoreStep, hapticsEnabled, steps, activeDays, showSnackbar]);
 
   if (viewMode === "work") {
     return (

@@ -11,6 +11,7 @@ import { queryClient } from "@/lib/query-client";
 
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Snackbar } from "@/components/Snackbar";
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
               <NavigationContainer>
                 <RootStackNavigator />
               </NavigationContainer>
+              <Snackbar />
               <StatusBar style="auto" />
             </KeyboardProvider>
           </GestureHandlerRootView>

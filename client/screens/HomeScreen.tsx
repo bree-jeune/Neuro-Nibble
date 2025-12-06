@@ -16,6 +16,7 @@ import { WeeklyRoomBadge } from "@/components/WeeklyRoomBadge";
 import { RecentTaskCard } from "@/components/RecentTaskCard";
 import { DailyBookend } from "@/components/DailyBookend";
 import { useAppStore } from "@/lib/store";
+import { useSnackbarStore } from "@/lib/snackbarStore";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 import type { EnergyLevel } from "@/lib/types";
 
@@ -34,9 +35,12 @@ export default function HomeScreen() {
     tasks, 
     bookendCompleted,
     setBookendCompleted,
+    restoreBookendState,
+    lastBookendDate,
     hapticsEnabled,
     dopamineMenu,
   } = useAppStore();
+  const showSnackbar = useSnackbarStore((s) => s.show);
 
   const recentTasks = tasks
     .filter((t) => t.lastWorkedOn)
@@ -63,11 +67,17 @@ export default function HomeScreen() {
   }, [setBookendCompleted, hapticsEnabled]);
 
   const handleEndDay = () => {
+    const prevCompleted = bookendCompleted;
+    const prevLastDate = lastBookendDate;
+    
     if (hapticsEnabled) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     setBookendCompleted(true);
     setShowEndDayModal(false);
+    showSnackbar("Day ended. Rest well.", () => {
+      restoreBookendState(prevCompleted, prevLastDate);
+    });
   };
 
   const getGreeting = () => {

@@ -7,9 +7,11 @@ interface AppStore extends AppState {
   setEnergyLevel: (level: EnergyLevel) => void;
   setWeeklyRoom: (room: WeeklyRoom) => void;
   addTask: (task: Omit<Task, "id" | "createdAt">) => void;
+  restoreTask: (task: Task, index?: number) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   toggleStepComplete: (taskId: string, stepId: string) => void;
+  restoreStep: (taskId: string, step: Step, removeDayFromActive: string | null) => void;
   setBrainDump: (text: string) => void;
   addDopamineItem: (item: string) => void;
   removeDopamineItem: (item: string) => void;
@@ -20,6 +22,7 @@ interface AppStore extends AppState {
   setNotificationsEnabled: (enabled: boolean) => void;
   setEnergyCheckInEnabled: (enabled: boolean) => void;
   setBookendCompleted: (completed: boolean) => void;
+  restoreBookendState: (completed: boolean, lastDate: string) => void;
   markActiveDay: () => void;
   completeOnboarding: () => void;
   resetAllData: () => void;
@@ -59,6 +62,15 @@ export const useAppStore = create<AppStore>()(
           createdAt: new Date().toISOString(),
         };
         set((state) => ({ tasks: [newTask, ...state.tasks] }));
+      },
+      
+      restoreTask: (task, index) => {
+        set((state) => {
+          const newTasks = [...state.tasks];
+          const insertIndex = index !== undefined ? Math.min(index, newTasks.length) : 0;
+          newTasks.splice(insertIndex, 0, task);
+          return { tasks: newTasks };
+        });
       },
       
       updateTask: (id, updates) => {
@@ -117,6 +129,52 @@ export const useAppStore = create<AppStore>()(
         });
       },
       
+      restoreStep: (taskId, step, removeDayFromActive) => {
+        set((state) => {
+          let newActiveDays = state.activeDays;
+          if (removeDayFromActive) {
+            const hasOtherCompletedStepsToday = state.tasks.some((t) =>
+              t.steps.some((s) => 
+                s.id !== step.id && 
+                s.completed && 
+                s.completedAt?.startsWith(removeDayFromActive)
+              )
+            );
+            if (!hasOtherCompletedStepsToday) {
+              newActiveDays = state.activeDays.filter((d) => d !== removeDayFromActive);
+            }
+          }
+          
+          return {
+            activeDays: newActiveDays,
+            tasks: state.tasks.map((t) => {
+              if (t.id !== taskId) return t;
+              
+              const newSteps = t.steps.map((s) =>
+                s.id === step.id ? { ...step } : s
+              );
+              
+              const completedSteps = newSteps.filter((s) => s.completed && s.completedAt);
+              let computedLastWorkedOn: string | undefined;
+              if (completedSteps.length > 0) {
+                const mostRecent = completedSteps.reduce((latest, s) => {
+                  if (!latest.completedAt) return s;
+                  if (!s.completedAt) return latest;
+                  return s.completedAt > latest.completedAt ? s : latest;
+                });
+                computedLastWorkedOn = mostRecent.completedAt;
+              }
+              
+              return {
+                ...t,
+                lastWorkedOn: computedLastWorkedOn,
+                steps: newSteps,
+              };
+            }),
+          };
+        });
+      },
+      
       setBrainDump: (text) => set({ brainDump: text }),
       
       addDopamineItem: (item) => {
@@ -164,6 +222,10 @@ export const useAppStore = create<AppStore>()(
       setBookendCompleted: (completed) => {
         const today = new Date().toISOString().split("T")[0];
         set({ bookendCompleted: completed, lastBookendDate: today });
+      },
+      
+      restoreBookendState: (completed, lastDate) => {
+        set({ bookendCompleted: completed, lastBookendDate: lastDate });
       },
       
       completeOnboarding: () => set({ onboardingCompleted: true }),

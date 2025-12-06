@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { View, FlatList, StyleSheet, Pressable, Alert } from "react-native";
+import { View, FlatList, StyleSheet, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -13,6 +13,7 @@ import { TaskCard } from "@/components/TaskCard";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useAppStore } from "@/lib/store";
+import { useSnackbarStore } from "@/lib/snackbarStore";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 import type { EnergyLevel, Task } from "@/lib/types";
 
@@ -26,7 +27,8 @@ export default function TasksScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [filter, setFilter] = useState<FilterType>("all");
 
-  const { tasks, deleteTask, toggleStepComplete } = useAppStore();
+  const { tasks, deleteTask, restoreTask, toggleStepComplete, restoreStep } = useAppStore();
+  const showSnackbar = useSnackbarStore((s) => s.show);
 
   const filteredTasks = filter === "all" 
     ? tasks 
@@ -37,27 +39,42 @@ export default function TasksScreen() {
   }, [navigation]);
 
   const handleDeleteTask = useCallback((taskId: string) => {
-    Alert.alert(
-      "Delete this bite?",
-      "This can't be undone, but you can always create a new one.",
-      [
-        { text: "Keep it", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            deleteTask(taskId);
-          }
-        },
-      ]
-    );
-  }, [deleteTask]);
+    const taskToDelete = tasks.find(t => t.id === taskId);
+    const taskIndex = tasks.findIndex(t => t.id === taskId);
+    
+    if (!taskToDelete) return;
+    
+    const taskSnapshot = JSON.parse(JSON.stringify(taskToDelete));
+    const indexSnapshot = taskIndex;
+    
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    deleteTask(taskId);
+    
+    showSnackbar("Task deleted", () => {
+      restoreTask(taskSnapshot, indexSnapshot);
+    });
+  }, [deleteTask, restoreTask, tasks, showSnackbar]);
+
+  const activeDays = useAppStore((s) => s.activeDays);
 
   const handleStepToggle = useCallback((taskId: string, stepId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    const step = task?.steps.find(s => s.id === stepId);
+    if (!step || !task) return;
+    
+    const wasCompleted = step.completed;
+    const stepSnapshot = JSON.parse(JSON.stringify(step));
+    const today = new Date().toISOString().split("T")[0];
+    
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     toggleStepComplete(taskId, stepId);
-  }, [toggleStepComplete]);
+    
+    if (!wasCompleted) {
+      showSnackbar("Bite complete", () => {
+        restoreStep(taskId, stepSnapshot, today);
+      });
+    }
+  }, [toggleStepComplete, restoreStep, tasks, activeDays, showSnackbar]);
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
