@@ -59,11 +59,11 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
 
       <View style={styles.content}>
         <ThemedText type="h1" style={styles.title}>
-          Something went wrong
+          NeuroNibble needs a moment
         </ThemedText>
 
-        <ThemedText type="body" style={styles.message}>
-          Please reload the app to continue.
+        <ThemedText type="body" style={[styles.message, { color: theme.textSecondary }]}>
+          Your brain isn't broken. The app just tripped. Let's try again.
         </ThemedText>
 
         <Pressable
@@ -71,7 +71,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           style={({ pressed }) => [
             styles.button,
             {
-              backgroundColor: theme.link,
+              backgroundColor: theme.primary,
               opacity: pressed ? 0.9 : 1,
               transform: [{ scale: pressed ? 0.98 : 1 }],
             },
@@ -81,7 +81,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
             type="body"
             style={[styles.buttonText, { color: theme.buttonText }]}
           >
-            Try Again
+            Take another bite
           </ThemedText>
         </Pressable>
       </View>
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
-    padding: Spacing["2xl"],
+    padding: Spacing.xl,
   },
   content: {
     alignItems: "center",
@@ -161,38 +161,28 @@ const styles = StyleSheet.create({
   },
   title: {
     textAlign: "center",
-    lineHeight: 40,
   },
   message: {
     textAlign: "center",
-    opacity: 0.7,
-    lineHeight: 24,
+    fontStyle: "italic",
   },
   topButton: {
     position: "absolute",
-    top: Spacing["2xl"] + Spacing.lg,
+    top: Spacing.xxl + Spacing.lg,
     right: Spacing.lg,
     width: 44,
     height: 44,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.sm,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 10,
   },
   button: {
-    paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing["2xl"],
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: Spacing.xl,
     minWidth: 200,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   buttonText: {
     fontWeight: "600",
@@ -234,7 +224,7 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     width: "100%",
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.sm,
     overflow: "hidden",
     padding: Spacing.lg,
   },

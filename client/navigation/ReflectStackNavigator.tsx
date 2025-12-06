@@ -1,24 +1,24 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import ProfileScreen from "@/screens/ProfileScreen";
+import ReflectScreen from "@/screens/ReflectScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
-export type ProfileStackParamList = {
-  Profile: undefined;
+export type ReflectStackParamList = {
+  Reflect: undefined;
 };
 
-const Stack = createNativeStackNavigator<ProfileStackParamList>();
+const Stack = createNativeStackNavigator<ReflectStackParamList>();
 
-export default function ProfileStackNavigator() {
+export default function ReflectStackNavigator() {
   const screenOptions = useScreenOptions();
 
   return (
     <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen
-        name="Profile"
-        component={ProfileScreen}
+        name="Reflect"
+        component={ReflectScreen}
         options={{
-          headerTitle: "You",
+          headerTitle: "Reflect",
         }}
       />
     </Stack.Navigator>

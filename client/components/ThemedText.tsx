@@ -6,7 +6,7 @@ import { Typography } from "@/constants/theme";
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: "h1" | "h2" | "h3" | "h4" | "body" | "small" | "link";
+  type?: "h1" | "h2" | "h3" | "h4" | "body" | "small" | "micro" | "link" | "mantra";
 };
 
 export function ThemedText({
@@ -31,6 +31,10 @@ export function ThemedText({
       return theme.link;
     }
 
+    if (type === "mantra") {
+      return theme.textSecondary;
+    }
+
     return theme.text;
   };
 
@@ -48,8 +52,12 @@ export function ThemedText({
         return Typography.body;
       case "small":
         return Typography.small;
+      case "micro":
+        return Typography.micro;
       case "link":
         return Typography.link;
+      case "mantra":
+        return Typography.mantra;
       default:
         return Typography.body;
     }

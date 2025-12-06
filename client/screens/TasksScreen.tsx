@@ -1,0 +1,173 @@
+import React, { useState, useCallback } from "react";
+import { View, FlatList, StyleSheet, Pressable, Alert } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useHeaderHeight } from "@react-navigation/elements";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { Feather } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as Haptics from "expo-haptics";
+
+import { ThemedText } from "@/components/ThemedText";
+import { TaskCard } from "@/components/TaskCard";
+import { useTheme } from "@/hooks/useTheme";
+import { Spacing, BorderRadius } from "@/constants/theme";
+import { useAppStore } from "@/lib/store";
+import type { RootStackParamList } from "@/navigation/RootStackNavigator";
+import type { EnergyLevel, Task } from "@/lib/types";
+
+type FilterType = "all" | EnergyLevel;
+
+export default function TasksScreen() {
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
+  const { theme } = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [filter, setFilter] = useState<FilterType>("all");
+
+  const { tasks, deleteTask, toggleStepComplete } = useAppStore();
+
+  const filteredTasks = filter === "all" 
+    ? tasks 
+    : tasks.filter(t => t.energyLevel === filter);
+
+  const handleTaskPress = useCallback((taskId: string) => {
+    navigation.navigate("BreakItDown", { taskId });
+  }, [navigation]);
+
+  const handleDeleteTask = useCallback((taskId: string) => {
+    Alert.alert(
+      "Delete this bite?",
+      "This can't be undone, but you can always create a new one.",
+      [
+        { text: "Keep it", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive",
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            deleteTask(taskId);
+          }
+        },
+      ]
+    );
+  }, [deleteTask]);
+
+  const handleStepToggle = useCallback((taskId: string, stepId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    toggleStepComplete(taskId, stepId);
+  }, [toggleStepComplete]);
+
+  const renderEmpty = () => (
+    <View style={styles.emptyContainer}>
+      <Feather name="inbox" size={48} color={theme.textSecondary} />
+      <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
+        No bites yet
+      </ThemedText>
+      <ThemedText style={[styles.emptySubtext, { color: theme.textSecondary }]}>
+        Tap the + button to break down a task
+      </ThemedText>
+    </View>
+  );
+
+  const FilterButton = ({ type, label }: { type: FilterType; label: string }) => (
+    <Pressable
+      onPress={() => {
+        Haptics.selectionAsync();
+        setFilter(type);
+      }}
+      style={[
+        styles.filterButton,
+        {
+          backgroundColor: filter === type ? theme.primary : theme.backgroundDefault,
+        },
+      ]}
+    >
+      <ThemedText
+        style={[
+          styles.filterText,
+          { color: filter === type ? "#FFFFFF" : theme.text },
+        ]}
+      >
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
+      <View 
+        style={[
+          styles.filterContainer, 
+          { 
+            paddingTop: headerHeight + Spacing.sm,
+            backgroundColor: theme.backgroundRoot,
+          }
+        ]}
+      >
+        <FilterButton type="all" label="All" />
+        <FilterButton type="low" label="Low" />
+        <FilterButton type="medium" label="Medium" />
+        <FilterButton type="high" label="High" />
+      </View>
+      <FlatList
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingTop: Spacing.md,
+          paddingBottom: tabBarHeight + Spacing.xl + 80,
+          paddingHorizontal: Spacing.lg,
+          flexGrow: 1,
+        }}
+        scrollIndicatorInsets={{ bottom: insets.bottom }}
+        data={filteredTasks}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <TaskCard
+            task={item}
+            onPress={() => handleTaskPress(item.id)}
+            onDelete={() => handleDeleteTask(item.id)}
+            onStepToggle={(stepId) => handleStepToggle(item.id, stepId)}
+          />
+        )}
+        ListEmptyComponent={renderEmpty}
+        showsVerticalScrollIndicator={false}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  filterContainer: {
+    flexDirection: "row",
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  filterButton: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+  },
+  filterText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.xxl,
+  },
+  emptyText: {
+    marginTop: Spacing.md,
+    fontSize: 18,
+    fontWeight: "500",
+  },
+  emptySubtext: {
+    marginTop: Spacing.sm,
+    fontSize: 14,
+    fontStyle: "italic",
+    textAlign: "center",
+  },
+});

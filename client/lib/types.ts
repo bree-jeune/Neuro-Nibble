@@ -1,0 +1,38 @@
+export type EnergyLevel = "low" | "medium" | "high";
+
+export type WeeklyRoom = "chaos" | "gentle" | "build" | "repair";
+
+export interface Step {
+  id: string;
+  text: string;
+  minutes: number;
+  completed: boolean;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  steps: Step[];
+  energyLevel: EnergyLevel;
+  createdAt: string;
+  lastWorkedOn?: string;
+  savedSpot?: {
+    stepIndex: number;
+    notes?: string;
+  };
+}
+
+export interface AppState {
+  energyLevel: EnergyLevel;
+  weeklyRoom: WeeklyRoom;
+  tasks: Task[];
+  brainDump: string;
+  dopamineMenu: string[];
+  oneTinyThing: string;
+  displayName: string;
+  avatarIndex: number;
+  hapticsEnabled: boolean;
+  notificationsEnabled: boolean;
+  bookendCompleted: boolean;
+  lastBookendDate: string;
+}
