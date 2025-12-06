@@ -38,7 +38,7 @@ export function SwipeableThoughtCard({
   const cardHeight = useSharedValue(72);
 
   const handleVent = useCallback(() => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     onVent(thought.id);
   }, [onVent, thought.id]);
 
@@ -148,7 +148,7 @@ export function SwipeableThoughtCard({
       >
         <ThemedText style={styles.actionText}>Vent</ThemedText>
         <Animated.View style={rightIconStyle}>
-          <Feather name="wind" size={24} color="#FFFFFF" />
+          <Feather name="trash-2" size={24} color="#FFFFFF" />
         </Animated.View>
       </Animated.View>
 
