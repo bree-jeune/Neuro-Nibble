@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Pressable } from "react-native";
+import { View, StyleSheet, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -9,7 +9,8 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { useTheme } from "@/hooks/useTheme";
-import { BorderRadius } from "@/constants/theme";
+import { ThemedText } from "@/components/ThemedText";
+import { BorderRadius, Spacing } from "@/constants/theme";
 import { useAppStore } from "@/lib/store";
 import type { WeeklyRoom } from "@/lib/types";
 
@@ -18,10 +19,17 @@ const SHAPE_SIZE = 56;
 const ROOM_ORDER: WeeklyRoom[] = ["chaos", "gentle", "build", "repair"];
 
 const ROOM_ICONS: Record<WeeklyRoom, keyof typeof Feather.glyphMap> = {
-  chaos: "zap",
-  gentle: "feather",
-  build: "tool",
-  repair: "heart",
+  chaos: "wind",
+  gentle: "moon",
+  build: "layers",
+  repair: "tool",
+};
+
+const ROOM_LABELS: Record<WeeklyRoom, string> = {
+  chaos: "Chaos",
+  gentle: "Gentle",
+  build: "Build",
+  repair: "Repair",
 };
 
 export function RoomSwitcher() {
@@ -34,7 +42,7 @@ export function RoomSwitcher() {
 
   const handlePress = () => {
     if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Haptics.selectionAsync();
     }
     
     scale.value = withSpring(0.9, { damping: 15, stiffness: 400 }, () => {
@@ -67,28 +75,44 @@ export function RoomSwitcher() {
 
   const roomColor = getRoomColor(weeklyRoom);
   const iconName = ROOM_ICONS[weeklyRoom];
+  const roomLabel = ROOM_LABELS[weeklyRoom];
 
   return (
     <Pressable onPress={handlePress}>
-      <Animated.View
-        style={[
-          styles.shape,
-          { backgroundColor: roomColor },
-          animatedStyle,
-        ]}
-      >
-        <Feather name={iconName} size={24} color="#FFFFFF" />
-      </Animated.View>
+      <View style={styles.container}>
+        <Animated.View
+          style={[
+            styles.shape,
+            { backgroundColor: roomColor },
+            animatedStyle,
+          ]}
+        >
+          <Feather name={iconName} size={24} color="#FFFFFF" />
+        </Animated.View>
+        <ThemedText
+          type="small"
+          style={[styles.label, { color: theme.textSecondary }]}
+        >
+          {roomLabel}
+        </ThemedText>
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    alignItems: "center",
+  },
   shape: {
     width: SHAPE_SIZE,
     height: SHAPE_SIZE,
     borderRadius: BorderRadius.lg,
     alignItems: "center",
     justifyContent: "center",
+  },
+  label: {
+    marginTop: Spacing.xs,
+    fontSize: 10,
   },
 });
