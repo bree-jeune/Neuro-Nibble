@@ -1,18 +1,21 @@
-import React, { useState, useCallback, useEffect } from "react";
-import { View, ScrollView, StyleSheet, TextInput, Pressable } from "react-native";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { View, ScrollView, StyleSheet, TextInput, Pressable, FlatList, Keyboard, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { WeeklyRoomCard } from "@/components/WeeklyRoomCard";
 import { DopamineMenuItem } from "@/components/DopamineMenuItem";
+import { SwipeableThoughtCard } from "@/components/SwipeableThoughtCard";
+import { SpinForDopamine } from "@/components/SpinForDopamine";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useAppStore } from "@/lib/store";
-import type { WeeklyRoom } from "@/lib/types";
+import type { WeeklyRoom, ThoughtItem } from "@/lib/types";
 
 export default function ReflectScreen() {
   const insets = useSafeAreaInsets();
@@ -23,8 +26,10 @@ export default function ReflectScreen() {
   const { 
     weeklyRoom, 
     setWeeklyRoom, 
-    brainDump, 
-    setBrainDump,
+    thoughtDump,
+    addThought,
+    removeThought,
+    convertThoughtToTask,
     dopamineMenu,
     addDopamineItem,
     removeDopamineItem,
@@ -33,8 +38,12 @@ export default function ReflectScreen() {
   } = useAppStore();
 
   const [newDopamineItem, setNewDopamineItem] = useState("");
+  const [newThought, setNewThought] = useState("");
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const inputRef = useRef<TextInput>(null);
 
-  const brainDumpPlaceholders = [
+  const thoughtPlaceholders = [
     "What's weighing on you?",
     "Let it all out...",
     "No judgment here...",
@@ -48,15 +57,40 @@ export default function ReflectScreen() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setPlaceholderIndex((prev) => (prev + 1) % brainDumpPlaceholders.length);
+      setPlaceholderIndex((prev) => (prev + 1) % thoughtPlaceholders.length);
     }, 4000);
     return () => clearInterval(interval);
+  }, []);
+
+  const showToastMessage = useCallback((message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2000);
   }, []);
 
   const handleRoomSelect = useCallback((room: WeeklyRoom) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setWeeklyRoom(room);
   }, [setWeeklyRoom]);
+
+  const handleAddThought = useCallback(() => {
+    if (newThought.trim()) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      addThought(newThought.trim());
+      setNewThought("");
+      Keyboard.dismiss();
+    }
+  }, [newThought, addThought]);
+
+  const handleVentThought = useCallback((id: string) => {
+    removeThought(id);
+    showToastMessage("Released into the void");
+  }, [removeThought, showToastMessage]);
+
+  const handleConvertToTask = useCallback((thought: ThoughtItem) => {
+    convertThoughtToTask(thought);
+    showToastMessage("Moved to Tasks");
+  }, [convertThoughtToTask, showToastMessage]);
 
   const handleAddDopamineItem = useCallback(() => {
     if (newDopamineItem.trim()) {
@@ -73,130 +107,190 @@ export default function ReflectScreen() {
 
   const rooms: WeeklyRoom[] = ["chaos", "gentle", "build", "repair"];
 
+  const renderThoughtItem = useCallback(({ item }: { item: ThoughtItem }) => (
+    <SwipeableThoughtCard
+      thought={item}
+      onVent={handleVentThought}
+      onConvertToTask={handleConvertToTask}
+    />
+  ), [handleVentThought, handleConvertToTask]);
+
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
-      contentContainerStyle={{
-        paddingTop: headerHeight + Spacing.lg,
-        paddingBottom: tabBarHeight + Spacing.xl + 80,
-        paddingHorizontal: Spacing.lg,
-      }}
-      scrollIndicatorInsets={{ bottom: insets.bottom }}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={styles.section}>
-        <ThemedText type="h3" style={styles.sectionTitle}>
-          What kind of week is this?
-        </ThemedText>
-        <View style={styles.roomsGrid}>
-          {rooms.map((room) => (
-            <WeeklyRoomCard
-              key={room}
-              room={room}
-              selected={weeklyRoom === room}
-              onPress={() => handleRoomSelect(room)}
-            />
-          ))}
+    <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingTop: headerHeight + Spacing.lg,
+          paddingBottom: tabBarHeight + Spacing.xl + 80,
+          paddingHorizontal: Spacing.lg,
+        }}
+        scrollIndicatorInsets={{ bottom: insets.bottom }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.section}>
+          <ThemedText type="h3" style={styles.sectionTitle}>
+            What kind of week is this?
+          </ThemedText>
+          <View style={styles.roomsGrid}>
+            {rooms.map((room) => (
+              <WeeklyRoomCard
+                key={room}
+                room={room}
+                selected={weeklyRoom === room}
+                onPress={() => handleRoomSelect(room)}
+              />
+            ))}
+          </View>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <ThemedText type="h3" style={styles.sectionTitle}>
-          Dump the heavy stuff
-        </ThemedText>
-        <ThemedText style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-          No fixing, no judgment. Just get it out.
-        </ThemedText>
-        <TextInput
-          style={[
-            styles.brainDumpInput,
-            {
-              backgroundColor: theme.inputBackground,
-              color: theme.text,
-              borderColor: theme.border,
-            },
-          ]}
-          placeholder={brainDumpPlaceholders[placeholderIndex]}
-          placeholderTextColor={theme.textSecondary}
-          value={brainDump}
-          onChangeText={setBrainDump}
-          multiline
-          textAlignVertical="top"
-        />
-      </View>
+        <View style={styles.section}>
+          <ThemedText type="h3" style={styles.sectionTitle}>
+            Thought Processor
+          </ThemedText>
+          <ThemedText style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+            Swipe right to make it a task. Swipe left to let it go.
+          </ThemedText>
+          
+          {thoughtDump.length > 0 ? (
+            <FlatList
+              data={thoughtDump}
+              renderItem={renderThoughtItem}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              contentContainerStyle={styles.thoughtList}
+              showsVerticalScrollIndicator={false}
+            />
+          ) : (
+            <View style={[styles.emptyState, { backgroundColor: theme.backgroundSecondary }]}>
+              <Feather name="inbox" size={32} color={theme.textSecondary} />
+              <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
+                No thoughts yet. Add one below.
+              </ThemedText>
+            </View>
+          )}
 
-      <View style={styles.section}>
-        <ThemedText type="h3" style={styles.sectionTitle}>
-          Your Dopamine Menu
-        </ThemedText>
-        <ThemedText style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-          Things YOUR brain actually likes (not shoulds).
-        </ThemedText>
-        <View style={styles.dopamineInputRow}>
+          <View style={[styles.inputBar, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+            <TextInput
+              ref={inputRef}
+              style={[styles.thoughtInput, { color: theme.text }]}
+              placeholder={thoughtPlaceholders[placeholderIndex]}
+              placeholderTextColor={theme.textSecondary}
+              value={newThought}
+              onChangeText={setNewThought}
+              onSubmitEditing={handleAddThought}
+              returnKeyType="send"
+              blurOnSubmit={false}
+            />
+            <Pressable
+              onPress={handleAddThought}
+              style={[
+                styles.sendButton,
+                { backgroundColor: newThought.trim() ? theme.primary : theme.backgroundSecondary }
+              ]}
+              disabled={!newThought.trim()}
+            >
+              <Feather 
+                name="send" 
+                size={18} 
+                color={newThought.trim() ? "#FFFFFF" : theme.textSecondary} 
+              />
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText type="h3" style={styles.sectionTitle}>
+            Your Dopamine Menu
+          </ThemedText>
+          <ThemedText style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+            Things YOUR brain actually likes (not shoulds).
+          </ThemedText>
+          <View style={styles.dopamineInputRow}>
+            <TextInput
+              style={[
+                styles.dopamineInput,
+                {
+                  backgroundColor: theme.inputBackground,
+                  color: theme.text,
+                  borderColor: theme.border,
+                },
+              ]}
+              placeholder="Add something you enjoy..."
+              placeholderTextColor={theme.textSecondary}
+              value={newDopamineItem}
+              onChangeText={setNewDopamineItem}
+              onSubmitEditing={handleAddDopamineItem}
+              returnKeyType="done"
+            />
+            <Pressable
+              onPress={handleAddDopamineItem}
+              style={[styles.addButton, { backgroundColor: theme.primary }]}
+            >
+              <Feather name="plus" size={20} color="#FFFFFF" />
+            </Pressable>
+          </View>
+          <View style={styles.dopamineList}>
+            {dopamineMenu.map((item, index) => (
+              <DopamineMenuItem
+                key={index}
+                item={item}
+                onRemove={() => handleRemoveDopamineItem(item)}
+              />
+            ))}
+          </View>
+
+          <View style={styles.spinContainer}>
+            <SpinForDopamine items={dopamineMenu} />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText type="h3" style={styles.sectionTitle}>
+            One Tiny Thing
+          </ThemedText>
+          <ThemedText style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+            What would make tomorrow just a little better?
+          </ThemedText>
           <TextInput
             style={[
-              styles.dopamineInput,
+              styles.tinyThingInput,
               {
                 backgroundColor: theme.inputBackground,
                 color: theme.text,
                 borderColor: theme.border,
               },
             ]}
-            placeholder="Add something you enjoy..."
+            placeholder="Just one small thing..."
             placeholderTextColor={theme.textSecondary}
-            value={newDopamineItem}
-            onChangeText={setNewDopamineItem}
-            onSubmitEditing={handleAddDopamineItem}
-            returnKeyType="done"
+            value={oneTinyThing}
+            onChangeText={setOneTinyThing}
           />
-          <Pressable
-            onPress={handleAddDopamineItem}
-            style={[styles.addButton, { backgroundColor: theme.primary }]}
-          >
-            <Feather name="plus" size={20} color="#FFFFFF" />
-          </Pressable>
         </View>
-        <View style={styles.dopamineList}>
-          {dopamineMenu.map((item, index) => (
-            <DopamineMenuItem
-              key={index}
-              item={item}
-              onRemove={() => handleRemoveDopamineItem(item)}
-            />
-          ))}
-        </View>
-      </View>
 
-      <View style={styles.section}>
-        <ThemedText type="h3" style={styles.sectionTitle}>
-          One Tiny Thing
-        </ThemedText>
-        <ThemedText style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-          What would make tomorrow just a little better?
-        </ThemedText>
-        <TextInput
+        <View style={styles.permissionContainer}>
+          <ThemedText style={[styles.permissionText, { color: theme.textSecondary }]}>
+            Gentle weeks are valid.
+          </ThemedText>
+        </View>
+      </ScrollView>
+
+      {showToast ? (
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(200)}
           style={[
-            styles.tinyThingInput,
-            {
-              backgroundColor: theme.inputBackground,
-              color: theme.text,
-              borderColor: theme.border,
-            },
+            styles.toast,
+            { 
+              backgroundColor: theme.primary,
+              bottom: tabBarHeight + Spacing.lg,
+            }
           ]}
-          placeholder="Just one small thing..."
-          placeholderTextColor={theme.textSecondary}
-          value={oneTinyThing}
-          onChangeText={setOneTinyThing}
-        />
-      </View>
-
-      <View style={styles.permissionContainer}>
-        <ThemedText style={[styles.permissionText, { color: theme.textSecondary }]}>
-          Gentle weeks are valid.
-        </ThemedText>
-      </View>
-    </ScrollView>
+        >
+          <ThemedText style={styles.toastText}>{toastMessage}</ThemedText>
+        </Animated.View>
+      ) : null}
+    </View>
   );
 }
 
@@ -214,13 +308,43 @@ const styles = StyleSheet.create({
   roomsGrid: {
     gap: Spacing.sm,
   },
-  brainDumpInput: {
-    minHeight: 120,
-    padding: Spacing.md,
+  thoughtList: {
+    marginBottom: Spacing.md,
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.xl,
     borderRadius: BorderRadius.sm,
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontStyle: "italic",
+  },
+  inputBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.lg,
     borderWidth: 1,
-    fontSize: 16,
-    letterSpacing: 0.5,
+    gap: Spacing.sm,
+  },
+  thoughtInput: {
+    flex: 1,
+    fontSize: 15,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    minHeight: 40,
+  },
+  sendButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
   dopamineInputRow: {
     flexDirection: "row",
@@ -246,6 +370,9 @@ const styles = StyleSheet.create({
   dopamineList: {
     gap: Spacing.sm,
   },
+  spinContainer: {
+    marginTop: Spacing.lg,
+  },
   tinyThingInput: {
     height: 48,
     padding: Spacing.md,
@@ -261,5 +388,19 @@ const styles = StyleSheet.create({
   permissionText: {
     fontStyle: "italic",
     textAlign: "center",
+  },
+  toast: {
+    position: "absolute",
+    left: Spacing.lg,
+    right: Spacing.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+  },
+  toastText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 14,
   },
 });
