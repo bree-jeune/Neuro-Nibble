@@ -1,0 +1,150 @@
+1. The core concept isn’t fully explicit
+Right now a new user has to infer:
+
+“Tasks” → “Bites” → “Energy level” → “Week type (Gentle / Build / Repair / Chaos)”.
+That the app is about touching tasks in micro‑steps, not “getting everything done”.
+You hint at it (“Momentum in micro-doses”, “You can stop after this step. That still counts.”), but there’s no single, clear explanation.
+
+What would help:
+
+A 2–3 screen onboarding that spells out:
+“Freeze → Break it down into bites → Match to your energy → Touch one bite → That counts.”
+A short “What are bites?” explainer accessible from Tasks and the Break It Down screen.
+A one‑line subheading on the Tasks tab like:
+“Turn stuck tasks into 2–10 minute bites.”
+2. Empty states and “what now?” moments
+I don’t see any true empty states, but I can imagine these:
+
+First time on Home or Tasks with no tasks yet.
+First time on Reflect (not shown).
+First time on You.
+Without strong empty states, a new user can feel lost.
+
+What would help:
+
+Home empty state:
+“Nothing here yet. What’s freezing you today?” → primary button “Break down a task”.
+Tasks empty state:
+“No bites yet. Add one thing that feels impossible right now.”
+Reflect empty state:
+“End a day to see how your bites add up over time.”
+3. Guidance inside the flows
+The Break It Down flow is conceptually great, but it still feels a bit “form‑y” and cognitive‑heavy:
+
+“What’s freezing you?” + “What’s the tiniest first step?” + time + energy level.
+No examples or suggestions when the user blanks.
+What would help:
+
+Inline examples under each field:
+Under “What’s freezing you?” → “Ex: ‘grocery shopping’, ‘reply to landlord’, ‘start taxes’”.
+Under “What’s the tiniest first step?” → “Ex: ‘open notes app’, ‘find last receipt’, ‘write subject line’”.
+A “Suggest a tiny first step” chip that auto‑fills something plausible.
+For time, pre‑set chips (2, 5, 10 min) instead of only +/-.
+4. Consistency and hierarchy
+Overall the visual design is cohesive, but a few things weaken clarity:
+
+“Bites” vs “Steps” vs “Tasks”:
+“0 of 2 bites complete”, “Steps done”, “task touched today” – three words for similar concepts.
+Priority labels:
+“Low / Medium / High” at top filters, and also badges on cards. That’s good, but the visual weight of “high” vs “medium” is subtle.
+Week types:
+“Chaos Week” is selected, but it’s not obvious how that choice affects what I see or do.
+What would help:
+
+Pick one vocabulary and stick to it:
+e.g., “Task” + “Bites” (not “steps”).
+Make the effect of Week type explicit:
+After choosing Chaos Week, show a short banner:
+“Chaos Week: Only the smallest bites count. Aim for 1–2 bites a day.”
+Slightly stronger color or icon difference for high vs medium priority.
+5. Control over tasks (basic CRUD feels incomplete)
+From the screenshots, it’s unclear if users can:
+
+Edit a task name, bites, time estimates, or energy level after creation.
+Delete a task or a bite.
+Reorder tasks or bites.
+These are “must‑have” for a task app; without them, it feels like a prototype.
+
+What would help:
+
+Long‑press or swipe actions on task cards: Edit / Delete / Reorder.
+Inside a task (grocery shopping screen), allow:
+Reordering bites.
+Editing bite text and time.
+Deleting a bite.
+6. Progress, history, and payoff
+You have:
+
+“End Day” flow.
+“You” tab with total bites, steps done, completion %.
+But there’s no sense of story over time:
+
+What did I do yesterday vs today?
+How did my energy levels correlate with progress?
+What happened this week of “Chaos Week”?
+Without that, the “End Day” ritual feels a bit detached from any long‑term reward.
+
+What would help:
+
+A simple history view:
+List of past days with “bites touched” and energy level.
+Weekly summary:
+“This Chaos Week: 7 tasks touched, 12 bites done. That’s momentum.”
+Tiny celebratory micro‑copy when ending the day:
+You already have “You showed up today. That’s what matters.” – maybe add a small stat:
+“You completed 1 bite today.”
+7. Reflect / coaching layer (the “why this app” piece)
+The app’s differentiator is clearly neurodivergent‑friendly, shame‑reducing micro‑steps. Right now, that philosophy is present but quiet.
+
+What would help:
+
+In Reflect (and maybe Home), short prompts like:
+“What made today hard?” / “What helped you start?” with 1–2 tap answers.
+Occasional micro‑coaching:
+“You picked a 10‑minute bite on a low‑energy day. Want to shrink it to 2 minutes?”
+This turns it from “just another task app” into a supportive tool.
+
+8. Onboarding to energy + week types
+Energy check‑in and week selection are powerful, but:
+
+It’s not obvious how they change the experience.
+A first‑time user might ignore them as “extra settings”.
+What would help:
+
+When user first chooses a week type, show:
+“In Gentle Week, we’ll only ask you for 1 tiny bite a day.”
+“In Build Week, we’ll suggest a few more bites if you have capacity.”
+When they pick an energy level on Home:
+Slight copy change on tasks:
+Low energy → “Pick the easiest bite only.”
+High energy → “You could do 2–3 bites if you want.”
+9. Safety nets and feedback
+Not visible from screenshots:
+
+What happens if saving fails?
+What if user leaves fields blank?
+Is there an undo for “End Today” or “Mark done”?
+These are small, but missing them makes an app feel fragile.
+
+What would help:
+
+Gentle validation:
+If “What’s freezing you?” is empty, show:
+“Try naming just one thing that feels heavy right now.”
+Undo snackbars:
+“Bite marked done. Undo.”
+“Day ended. Undo.”
+10. A clearer “first 5 minutes” path
+Right now, a new user might:
+
+Land on Home, see energy buttons, Chaos Week, and “clear phone storage”.
+Tap Tasks and see a list.
+Not be sure what to do next.
+What would help:
+
+First‑run checklist:
+“Choose your week.”
+“Add one frozen task.”
+“Break it into 1–3 bites.”
+“Do just the first bite.”
+Once they’ve done that once, the app’s value becomes obvious.

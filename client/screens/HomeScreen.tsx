@@ -127,7 +127,26 @@ export default function HomeScreen() {
 
         <WeeklyRoomBadge room={weeklyRoom} />
 
-        {recentTasks.length > 0 ? (
+        {tasks.length === 0 ? (
+          <View style={[styles.emptyStateCard, { backgroundColor: theme.backgroundDefault }]}>
+            <View style={[styles.emptyStateIcon, { backgroundColor: theme.backgroundSecondary }]}>
+              <Feather name="pause-circle" size={32} color={theme.primary} />
+            </View>
+            <ThemedText type="h3" style={styles.emptyStateTitle}>
+              What's freezing you?
+            </ThemedText>
+            <ThemedText style={[styles.emptyStateText, { color: theme.textSecondary }]}>
+              Add something that feels stuck. We'll break it into tiny bites you can actually start.
+            </ThemedText>
+            <Pressable
+              onPress={() => navigation.navigate("BreakItDown")}
+              style={[styles.emptyStateButton, { backgroundColor: theme.primary }]}
+            >
+              <Feather name="plus" size={18} color="#FFFFFF" />
+              <ThemedText style={styles.emptyStateButtonText}>Break down a task</ThemedText>
+            </Pressable>
+          </View>
+        ) : recentTasks.length > 0 ? (
           <View style={styles.section}>
             <ThemedText type="h3" style={styles.sectionTitle}>
               Pick up where you left off
@@ -355,5 +374,42 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     padding: Spacing.sm,
+  },
+  emptyStateCard: {
+    marginTop: Spacing.lg,
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+  },
+  emptyStateIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.md,
+  },
+  emptyStateTitle: {
+    textAlign: "center",
+    marginBottom: Spacing.sm,
+  },
+  emptyStateText: {
+    textAlign: "center",
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: Spacing.lg,
+  },
+  emptyStateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.sm,
+  },
+  emptyStateButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 16,
   },
 });

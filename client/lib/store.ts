@@ -21,6 +21,7 @@ interface AppStore extends AppState {
   setEnergyCheckInEnabled: (enabled: boolean) => void;
   setBookendCompleted: (completed: boolean) => void;
   markActiveDay: () => void;
+  completeOnboarding: () => void;
   resetAllData: () => void;
 }
 
@@ -39,6 +40,7 @@ const initialState: AppState = {
   bookendCompleted: false,
   lastBookendDate: "",
   activeDays: [],
+  onboardingCompleted: false,
 };
 
 export const useAppStore = create<AppStore>()(
@@ -157,6 +159,8 @@ export const useAppStore = create<AppStore>()(
         const today = new Date().toISOString().split("T")[0];
         set({ bookendCompleted: completed, lastBookendDate: today });
       },
+      
+      completeOnboarding: () => set({ onboardingCompleted: true }),
       
       resetAllData: () => set(initialState),
     }),

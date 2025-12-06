@@ -61,13 +61,25 @@ export default function TasksScreen() {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Feather name="inbox" size={48} color={theme.textSecondary} />
-      <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
+      <View style={[styles.emptyIconContainer, { backgroundColor: theme.backgroundSecondary }]}>
+        <Feather name="layers" size={40} color={theme.primary} />
+      </View>
+      <ThemedText type="h3" style={styles.emptyTitle}>
         No bites yet
       </ThemedText>
-      <ThemedText style={[styles.emptySubtext, { color: theme.textSecondary }]}>
-        Tap the + button to break down a task
+      <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
+        Add one thing that feels impossible right now.
       </ThemedText>
+      <ThemedText style={[styles.emptySubtext, { color: theme.textSecondary }]}>
+        We'll break it into 2-10 minute pieces.
+      </ThemedText>
+      <Pressable
+        onPress={() => navigation.navigate("BreakItDown")}
+        style={[styles.emptyButton, { backgroundColor: theme.primary }]}
+      >
+        <Feather name="plus" size={18} color="#FFFFFF" />
+        <ThemedText style={styles.emptyButtonText}>Break down a task</ThemedText>
+      </Pressable>
     </View>
   );
 
@@ -158,16 +170,42 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: Spacing.xxl,
+    paddingHorizontal: Spacing.lg,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.lg,
+  },
+  emptyTitle: {
+    marginBottom: Spacing.sm,
+    textAlign: "center",
   },
   emptyText: {
-    marginTop: Spacing.md,
-    fontSize: 18,
-    fontWeight: "500",
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: Spacing.xs,
   },
   emptySubtext: {
-    marginTop: Spacing.sm,
     fontSize: 14,
     fontStyle: "italic",
     textAlign: "center",
+    marginBottom: Spacing.lg,
+  },
+  emptyButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.sm,
+  },
+  emptyButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 16,
   },
 });
