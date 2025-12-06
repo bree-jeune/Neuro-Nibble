@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { AppState, Task, EnergyLevel, WeeklyRoom, Step, DailyReflection, ThoughtItem } from "@/lib/types";
+import type { AppState, Task, EnergyLevel, WeeklyRoom, Step, DailyReflection, ThoughtItem, DopamineItem, DopamineCost } from "@/lib/types";
 
 interface AppStore extends AppState {
   setEnergyLevel: (level: EnergyLevel) => void;
@@ -17,8 +17,9 @@ interface AppStore extends AppState {
   addThought: (text: string) => void;
   removeThought: (id: string) => void;
   convertThoughtToTask: (thought: ThoughtItem) => void;
-  addDopamineItem: (item: string) => void;
-  removeDopamineItem: (item: string) => void;
+  addDopamineItem: (text: string, cost: DopamineCost) => void;
+  updateDopamineItem: (id: string, updates: Partial<Omit<DopamineItem, "id">>) => void;
+  removeDopamineItem: (id: string) => void;
   setOneTinyThing: (text: string) => void;
   setDisplayName: (name: string) => void;
   setAvatarIndex: (index: number) => void;
@@ -224,15 +225,28 @@ export const useAppStore = create<AppStore>()(
         }));
       },
       
-      addDopamineItem: (item) => {
+      addDopamineItem: (text, cost) => {
+        const newItem: DopamineItem = {
+          id: Date.now().toString(),
+          text,
+          cost,
+        };
         set((state) => ({
-          dopamineMenu: [...state.dopamineMenu, item],
+          dopamineMenu: [...state.dopamineMenu, newItem],
         }));
       },
       
-      removeDopamineItem: (item) => {
+      updateDopamineItem: (id, updates) => {
         set((state) => ({
-          dopamineMenu: state.dopamineMenu.filter((i) => i !== item),
+          dopamineMenu: state.dopamineMenu.map((item) =>
+            item.id === id ? { ...item, ...updates } : item
+          ),
+        }));
+      },
+      
+      removeDopamineItem: (id) => {
+        set((state) => ({
+          dopamineMenu: state.dopamineMenu.filter((item) => item.id !== id),
         }));
       },
       

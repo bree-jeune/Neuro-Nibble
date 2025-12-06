@@ -45,13 +45,21 @@ export interface ThoughtItem {
   createdAt: string;
 }
 
+export type DopamineCost = "micro" | "snack" | "meal";
+
+export interface DopamineItem {
+  id: string;
+  text: string;
+  cost: DopamineCost;
+}
+
 export interface AppState {
   energyLevel: EnergyLevel;
   weeklyRoom: WeeklyRoom;
   tasks: Task[];
   brainDump: string;
   thoughtDump: ThoughtItem[];
-  dopamineMenu: string[];
+  dopamineMenu: DopamineItem[];
   oneTinyThing: string;
   displayName: string;
   avatarIndex: number;
