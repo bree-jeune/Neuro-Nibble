@@ -126,6 +126,32 @@ export default function BreakItDownScreen() {
     setSteps(prev => prev.filter(s => s.id !== stepId));
   }, [hapticsEnabled]);
 
+  const handleEditStep = useCallback((stepId: string, text: string, minutes: number) => {
+    if (hapticsEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setSteps(prev => prev.map(s => 
+      s.id === stepId ? { ...s, text, minutes } : s
+    ));
+  }, [hapticsEnabled]);
+
+  const handleMoveStep = useCallback((stepId: string, direction: "up" | "down") => {
+    if (hapticsEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setSteps(prev => {
+      const index = prev.findIndex(s => s.id === stepId);
+      if (index === -1) return prev;
+      if (direction === "up" && index === 0) return prev;
+      if (direction === "down" && index === prev.length - 1) return prev;
+      
+      const newSteps = [...prev];
+      const swapIndex = direction === "up" ? index - 1 : index + 1;
+      [newSteps[index], newSteps[swapIndex]] = [newSteps[swapIndex], newSteps[index]];
+      return newSteps;
+    });
+  }, [hapticsEnabled]);
+
   const handleToggleStep = useCallback((stepId: string) => {
     if (hapticsEnabled) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -418,6 +444,12 @@ export default function BreakItDownScreen() {
                   index={index}
                   onToggle={() => handleToggleStep(step.id)}
                   onRemove={() => handleRemoveStep(step.id)}
+                  onEdit={(text, minutes) => handleEditStep(step.id, text, minutes)}
+                  onMoveUp={() => handleMoveStep(step.id, "up")}
+                  onMoveDown={() => handleMoveStep(step.id, "down")}
+                  isFirst={index === 0}
+                  isLast={index === steps.length - 1}
+                  editable
                 />
               ))}
             </View>
