@@ -12,6 +12,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { EnergySelector } from "@/components/EnergySelector";
 import { StepItem } from "@/components/StepItem";
 import { VisualTimer } from "@/components/VisualTimer";
+import { AudioToggleButton } from "@/components/AudioToggleButton";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useAppStore } from "@/lib/store";
@@ -135,19 +136,27 @@ export default function BreakItDownScreen() {
         </HeaderButton>
       ),
       headerRight: viewMode === "edit" ? () => (
-        <HeaderButton 
-          onPress={handleSave}
-          disabled={!canSave}
-        >
-          <ThemedText style={{ color: canSave ? theme.primary : theme.textSecondary }}>
-            Save
-          </ThemedText>
-        </HeaderButton>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <AudioToggleButton />
+          <HeaderButton 
+            onPress={handleSave}
+            disabled={!canSave}
+          >
+            <ThemedText style={{ color: canSave ? theme.primary : theme.textSecondary }}>
+              Save
+            </ThemedText>
+          </HeaderButton>
+        </View>
       ) : viewMode === "work" ? () => (
-        <HeaderButton onPress={() => setViewMode("edit")}>
-          <Feather name="edit-2" size={20} color={theme.primary} />
-        </HeaderButton>
-      ) : undefined,
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <AudioToggleButton />
+          <HeaderButton onPress={() => setViewMode("edit")}>
+            <Feather name="edit-2" size={20} color={theme.primary} />
+          </HeaderButton>
+        </View>
+      ) : () => (
+        <AudioToggleButton />
+      ),
     });
   }, [navigation, theme, canSave, title, steps, energyLevel, viewMode]);
 

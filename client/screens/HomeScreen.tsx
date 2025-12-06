@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useLayoutEffect } from "react";
 import { View, ScrollView, StyleSheet, Pressable, Modal, TextInput, Animated, Easing } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -15,8 +15,10 @@ import { EnergyCard } from "@/components/EnergyCard";
 import { WeeklyRoomBadge } from "@/components/WeeklyRoomBadge";
 import { RecentTaskCard } from "@/components/RecentTaskCard";
 import { DailyBookend } from "@/components/DailyBookend";
+import { AudioToggleButton } from "@/components/AudioToggleButton";
 import { useAppStore } from "@/lib/store";
 import { useSnackbarStore } from "@/lib/snackbarStore";
+import { useAudio } from "@/lib/AudioContext";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 import type { EnergyLevel, Task } from "@/lib/types";
 
@@ -48,6 +50,13 @@ export default function HomeScreen() {
     addDailyReflection,
   } = useAppStore();
   const showSnackbar = useSnackbarStore((s) => s.show);
+  const { startAudio } = useAudio();
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => <AudioToggleButton />,
+    });
+  }, [navigation]);
 
   const recentTasks = tasks
     .filter((t) => {
@@ -122,13 +131,16 @@ export default function HomeScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     setEnergyLevel(level);
+    if (level === "low") {
+      startAudio();
+    }
     if (selectedTask) {
       updateTask(selectedTask.id, { energyLevel: level });
       setShowEnergyCheck(false);
       navigation.navigate("BreakItDown", { taskId: selectedTask.id });
       setSelectedTask(null);
     }
-  }, [setEnergyLevel, hapticsEnabled, selectedTask, updateTask, navigation]);
+  }, [setEnergyLevel, hapticsEnabled, selectedTask, updateTask, navigation, startAudio]);
 
   const handleSkipEnergyCheck = useCallback(() => {
     if (selectedTask) {
