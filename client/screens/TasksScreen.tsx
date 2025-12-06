@@ -10,6 +10,7 @@ import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { TaskCard } from "@/components/TaskCard";
+import { ContextualBanner } from "@/components/ContextualBanner";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useAppStore } from "@/lib/store";
@@ -27,7 +28,7 @@ export default function TasksScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [filter, setFilter] = useState<FilterType>("all");
 
-  const { tasks, deleteTask, restoreTask, toggleStepComplete, restoreStep } = useAppStore();
+  const { tasks, deleteTask, restoreTask, toggleStepComplete, restoreStep, energyLevel, weeklyRoom } = useAppStore();
   const showSnackbar = useSnackbarStore((s) => s.show);
 
   const filteredTasks = filter === "all" 
@@ -159,6 +160,14 @@ export default function TasksScreen() {
             onStepToggle={(stepId) => handleStepToggle(item.id, stepId)}
           />
         )}
+        ListHeaderComponent={
+          tasks.length > 0 ? (
+            <ContextualBanner 
+              energyLevel={energyLevel} 
+              weeklyRoom={weeklyRoom} 
+            />
+          ) : null
+        }
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
       />

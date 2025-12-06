@@ -15,6 +15,7 @@ import { EnergyCard } from "@/components/EnergyCard";
 import { WeeklyRoomBadge } from "@/components/WeeklyRoomBadge";
 import { RecentTaskCard } from "@/components/RecentTaskCard";
 import { DailyBookend } from "@/components/DailyBookend";
+import { ContextualBanner } from "@/components/ContextualBanner";
 import { useAppStore } from "@/lib/store";
 import { useSnackbarStore } from "@/lib/snackbarStore";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
@@ -136,6 +137,11 @@ export default function HomeScreen() {
         </View>
 
         <WeeklyRoomBadge room={weeklyRoom} />
+
+        <ContextualBanner 
+          energyLevel={energyLevel} 
+          weeklyRoom={weeklyRoom} 
+        />
 
         {tasks.length === 0 ? (
           <View style={[styles.emptyStateCard, { backgroundColor: theme.backgroundDefault }]}>
