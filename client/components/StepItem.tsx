@@ -16,12 +16,13 @@ interface StepItemProps {
   step: Step;
   index: number;
   onToggle: () => void;
-  onRemove: () => void;
+  onRemove?: () => void;
+  compact?: boolean;
 }
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-export function StepItem({ step, index, onToggle, onRemove }: StepItemProps) {
+export function StepItem({ step, index, onToggle, onRemove, compact }: StepItemProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
 
@@ -34,6 +35,7 @@ export function StepItem({ step, index, onToggle, onRemove }: StepItemProps) {
       style={[
         styles.container,
         { backgroundColor: theme.backgroundDefault },
+        compact && styles.containerCompact,
         animatedStyle,
       ]}
     >
@@ -41,6 +43,7 @@ export function StepItem({ step, index, onToggle, onRemove }: StepItemProps) {
         <View
           style={[
             styles.checkbox,
+            compact && styles.checkboxCompact,
             {
               backgroundColor: step.completed ? theme.primary : "transparent",
               borderColor: step.completed ? theme.primary : theme.border,
@@ -48,7 +51,7 @@ export function StepItem({ step, index, onToggle, onRemove }: StepItemProps) {
           ]}
         >
           {step.completed ? (
-            <Feather name="check" size={12} color="#FFFFFF" />
+            <Feather name="check" size={compact ? 10 : 12} color="#FFFFFF" />
           ) : null}
         </View>
       </Pressable>
@@ -57,6 +60,7 @@ export function StepItem({ step, index, onToggle, onRemove }: StepItemProps) {
         <ThemedText
           style={[
             styles.text,
+            compact && styles.textCompact,
             step.completed && {
               textDecorationLine: "line-through",
               color: theme.textSecondary,
@@ -71,9 +75,11 @@ export function StepItem({ step, index, onToggle, onRemove }: StepItemProps) {
         </ThemedText>
       </View>
 
-      <Pressable onPress={onRemove} style={styles.removeButton} hitSlop={8}>
-        <Feather name="x" size={16} color={theme.textSecondary} />
-      </Pressable>
+      {onRemove ? (
+        <Pressable onPress={onRemove} style={styles.removeButton} hitSlop={8}>
+          <Feather name="x" size={16} color={theme.textSecondary} />
+        </Pressable>
+      ) : null}
     </AnimatedView>
   );
 }
@@ -84,6 +90,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.xs,
+  },
+  containerCompact: {
+    padding: Spacing.sm,
   },
   checkboxArea: {
     padding: Spacing.xs,
@@ -97,6 +106,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  checkboxCompact: {
+    width: 20,
+    height: 20,
+  },
   content: {
     flex: 1,
     flexDirection: "row",
@@ -105,6 +118,9 @@ const styles = StyleSheet.create({
   text: {
     flex: 1,
     fontSize: 16,
+  },
+  textCompact: {
+    fontSize: 14,
   },
   minutes: {
     fontSize: 14,

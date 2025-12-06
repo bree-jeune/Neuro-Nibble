@@ -14,16 +14,21 @@ import Animated, {
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { useAppStore } from "@/lib/store";
 
 interface TimerButtonProps {
   minutes: number;
   stepText: string;
+  isActive?: boolean;
+  onStart?: () => void;
+  onComplete?: () => void;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function TimerButton({ minutes, stepText }: TimerButtonProps) {
+export function TimerButton({ minutes, stepText, isActive, onStart, onComplete }: TimerButtonProps) {
   const { theme } = useTheme();
+  const { hapticsEnabled } = useAppStore();
   const [isRunning, setIsRunning] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(minutes * 60);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -67,24 +72,34 @@ export function TimerButton({ minutes, stepText }: TimerButtonProps) {
 
   const handleComplete = () => {
     setIsRunning(false);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (hapticsEnabled) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    onComplete?.();
   };
 
   const handlePress = () => {
     if (isRunning) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (hapticsEnabled) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
       setIsRunning(false);
     } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      if (hapticsEnabled) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
       if (secondsLeft === 0) {
         setSecondsLeft(minutes * 60);
       }
       setIsRunning(true);
+      onStart?.();
     }
   };
 
   const handleReset = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (hapticsEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     setIsRunning(false);
     setSecondsLeft(minutes * 60);
   };
@@ -126,28 +141,32 @@ export function TimerButton({ minutes, stepText }: TimerButtonProps) {
         <View style={styles.buttonContent}>
           <Feather
             name={isRunning ? "pause" : "play"}
-            size={24}
+            size={28}
             color="#FFFFFF"
           />
           <View style={styles.textContainer}>
             <ThemedText style={styles.timerText}>
               {formatTime(secondsLeft)}
             </ThemedText>
-            <ThemedText style={styles.stepTextPreview} numberOfLines={1}>
-              {stepText}
-            </ThemedText>
+            {!isRunning ? (
+              <ThemedText style={styles.hintText}>
+                Tap to start timer
+              </ThemedText>
+            ) : null}
           </View>
         </View>
-        {isRunning ? (
-          <View
-            style={[
-              styles.progressBar,
-              {
-                width: `${progress * 100}%`,
-                backgroundColor: "rgba(255,255,255,0.3)",
-              },
-            ]}
-          />
+        {isRunning || progress > 0 ? (
+          <View style={styles.progressBackground}>
+            <View
+              style={[
+                styles.progressBar,
+                {
+                  width: `${progress * 100}%`,
+                  backgroundColor: "rgba(255,255,255,0.3)",
+                },
+              ]}
+            />
+          </View>
         ) : null}
       </AnimatedPressable>
 
@@ -156,7 +175,7 @@ export function TimerButton({ minutes, stepText }: TimerButtonProps) {
           onPress={handleReset}
           style={[styles.resetButton, { backgroundColor: theme.backgroundDefault }]}
         >
-          <Feather name="rotate-ccw" size={18} color={theme.text} />
+          <Feather name="rotate-ccw" size={20} color={theme.text} />
         </Pressable>
       ) : null}
     </View>
@@ -171,13 +190,14 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.md,
     overflow: "hidden",
+    minHeight: 80,
   },
   buttonContent: {
     flexDirection: "row",
     alignItems: "center",
-    padding: Spacing.md,
+    padding: Spacing.lg,
     gap: Spacing.md,
   },
   textContainer: {
@@ -185,23 +205,29 @@ const styles = StyleSheet.create({
   },
   timerText: {
     color: "#FFFFFF",
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: "600",
   },
-  stepTextPreview: {
-    color: "rgba(255,255,255,0.8)",
+  hintText: {
+    color: "rgba(255,255,255,0.7)",
     fontSize: 14,
+    marginTop: 2,
   },
-  progressBar: {
+  progressBackground: {
     position: "absolute",
     bottom: 0,
     left: 0,
-    height: 4,
+    right: 0,
+    height: 6,
+    backgroundColor: "rgba(0,0,0,0.1)",
+  },
+  progressBar: {
+    height: "100%",
   },
   resetButton: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.xs,
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.sm,
     alignItems: "center",
     justifyContent: "center",
   },

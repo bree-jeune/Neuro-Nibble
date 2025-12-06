@@ -1,0 +1,41 @@
+Core Functionality & UX Pain Points
+
+• Week Selection Inaccessibility: Users cannot select or switch their "Week Room" (mode) directly from the Home screen. This selection is critical as it dictates the user's flow and should be immediately accessible.
+
+• Missing "End Day" Action: There is no explicit button or option on the Home screen to end the current day, which breaks the clear delineation of daily flow.
+
+• Task Breakdown Screen Density (Pain Point Identified by User): The task breakdown screen ("Break It Down") is visually dense, which is a known pain point for neuro-divergent users. The spacing needs improvement, or elements should be reorganized across multiple screens for better flow.
+
+• Observation based on images: The current breakdown screen is cluttered with the "What's freezing you?" input, the micro-step controls, and the energy level buttons all in one view.
+
+• Timer Continuity/Visibility Issues: The task timer starts on the task-add screen, but it is not displayed on the subsequent checklist screen (the "Your Bites" view). It also seems to stop or fail to continue when the user switches views, undermining the "clear delineation" principle.
+
+• Lack of Pre-loaded Task Scaffolding: There is no functionality for users who struggle to shrink tasks to pre-select a task from a database that is already broken down into actionable steps with time pre-loaded.
+
+• No Body Doubling Support: The application currently lacks features for communal or social connection (like body doubling), which is a supportive technique many neuro-spicy individuals thrive on.
+
+• Dopamine Menu Lacks Value: The "dopamine menu" allows users to add items but offers no further value; it should be used for randomized positive prompting after task completion.
+
+• Missing "Gentle" Guardrails for Timers: The current timers lack customization for gentle alarms and have no guardrails to prevent them from becoming overly aggressive or stimulating.
+
+✨ Suggested Functional & UX Improvements
+
+• Week Room Selection on Home Screen: Implement a highly visible and easy-to-tap selector on the Home screen to switch between Gentle Week and Repair Week modes (or other available "rooms").
+
+• Database Requirement: A database of 52 weekly prompts (rooms) is required to support this functionality.
+
+• Energy Check-in Prompting (Optional): Add an optional feature to prompt users to check their energy levels either after a certain time or per task. This setting should be easily toggled on/off in the user profile.
+
+• Tactical Scaffolding Toggle: Introduce a clear toggle for optional tools and support for users who require more "tactical scaffolding."
+
+• Visual Analytics Dashboard: Develop an analytics dashboard on the profile page with visually pleasing streak tracking, mood usage, and completion rates to help with celebrations and object permanence.
+
+• Voice-to-Task Dictation: Add voice-to-text functionality for easily inputting new tasks and micro-steps.
+
+• Improved Micro-Copy/Prompts: Integrate gentle prompting and micro-copy (e.g., "You're allowed to stop whenever you need to") to provide gentle permission and reduce decision paralysis.
+
+• Cross-Device Syncing: Implement synchronization across different devices.
+
+• Custom Weekly Rooms: Allow users to create custom "Week Rooms" to better fit their personal needs.
+
+• Asynchronous/Synchronized Body Doubling: Integrate an optional form of body doubling (e.g., simple haptic responses for synchronized tasks or asynchronous progress sharing).

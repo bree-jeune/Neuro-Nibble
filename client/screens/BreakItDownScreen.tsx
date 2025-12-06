@@ -1,21 +1,11 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { View, StyleSheet, TextInput, Pressable, Alert } from "react-native";
+import { View, StyleSheet, TextInput, Pressable, FlatList } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight, HeaderButton } from "@react-navigation/elements";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
-import {
-  Gesture,
-  GestureDetector,
-} from "react-native-gesture-handler";
-import { scheduleOnRN } from "react-native-worklets";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { ThemedText } from "@/components/ThemedText";
@@ -28,6 +18,8 @@ import { useAppStore } from "@/lib/store";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 import type { EnergyLevel, Step } from "@/lib/types";
 
+type ViewMode = "edit" | "work";
+
 export default function BreakItDownScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
@@ -35,44 +27,58 @@ export default function BreakItDownScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "BreakItDown">>();
 
-  const { tasks, addTask, updateTask, toggleStepComplete } = useAppStore();
+  const { tasks, addTask, updateTask, toggleStepComplete, hapticsEnabled } = useAppStore();
   
   const existingTask = route.params?.taskId 
     ? tasks.find(t => t.id === route.params?.taskId)
     : undefined;
 
+  const [viewMode, setViewMode] = useState<ViewMode>(existingTask ? "work" : "edit");
   const [title, setTitle] = useState(existingTask?.title || "");
   const [steps, setSteps] = useState<Step[]>(existingTask?.steps || []);
   const [energyLevel, setEnergyLevel] = useState<EnergyLevel>(existingTask?.energyLevel || "medium");
   const [newStepText, setNewStepText] = useState("");
   const [newStepMinutes, setNewStepMinutes] = useState(5);
+  const [activeTimer, setActiveTimer] = useState<string | null>(null);
 
   const canSave = title.trim().length > 0;
+  const totalMinutes = steps.reduce((acc, s) => acc + s.minutes, 0);
+  const completedSteps = steps.filter(s => s.completed).length;
+  const nextIncompleteStep = steps.find(s => !s.completed);
 
   useEffect(() => {
     navigation.setOptions({
+      headerTitle: viewMode === "edit" ? "Break It Down" : title || "Your Bites",
       headerLeft: () => (
         <HeaderButton onPress={() => navigation.goBack()}>
-          <ThemedText style={{ color: theme.primary }}>Cancel</ThemedText>
+          <ThemedText style={{ color: theme.primary }}>
+            {viewMode === "work" ? "Done" : "Cancel"}
+          </ThemedText>
         </HeaderButton>
       ),
-      headerRight: () => (
+      headerRight: viewMode === "edit" ? () => (
         <HeaderButton 
           onPress={handleSave}
           disabled={!canSave}
         >
           <ThemedText style={{ color: canSave ? theme.primary : theme.textSecondary }}>
-            Save
+            {steps.length > 0 ? "Start" : "Save"}
           </ThemedText>
+        </HeaderButton>
+      ) : () => (
+        <HeaderButton onPress={() => setViewMode("edit")}>
+          <Feather name="edit-2" size={20} color={theme.primary} />
         </HeaderButton>
       ),
     });
-  }, [navigation, theme, canSave, title, steps, energyLevel]);
+  }, [navigation, theme, canSave, title, steps, energyLevel, viewMode]);
 
   const handleSave = useCallback(() => {
     if (!canSave) return;
     
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (hapticsEnabled) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
     
     if (existingTask) {
       updateTask(existingTask.id, {
@@ -89,12 +95,18 @@ export default function BreakItDownScreen() {
       });
     }
     
-    navigation.goBack();
-  }, [canSave, existingTask, title, steps, energyLevel, addTask, updateTask, navigation]);
+    if (steps.length > 0) {
+      setViewMode("work");
+    } else {
+      navigation.goBack();
+    }
+  }, [canSave, existingTask, title, steps, energyLevel, addTask, updateTask, navigation, hapticsEnabled]);
 
   const handleAddStep = useCallback(() => {
     if (newStepText.trim()) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (hapticsEnabled) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
       const newStep: Step = {
         id: Date.now().toString(),
         text: newStepText.trim(),
@@ -105,43 +117,134 @@ export default function BreakItDownScreen() {
       setNewStepText("");
       setNewStepMinutes(5);
     }
-  }, [newStepText, newStepMinutes, steps]);
+  }, [newStepText, newStepMinutes, steps, hapticsEnabled]);
 
   const handleRemoveStep = useCallback((stepId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (hapticsEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     setSteps(steps.filter(s => s.id !== stepId));
-  }, [steps]);
+  }, [steps, hapticsEnabled]);
 
   const handleToggleStep = useCallback((stepId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (hapticsEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     if (existingTask) {
       toggleStepComplete(existingTask.id, stepId);
-      setSteps(prev => prev.map(s => 
-        s.id === stepId ? { ...s, completed: !s.completed } : s
-      ));
-    } else {
-      setSteps(prev => prev.map(s => 
-        s.id === stepId ? { ...s, completed: !s.completed } : s
-      ));
     }
-  }, [existingTask, toggleStepComplete]);
+    setSteps(prev => prev.map(s => 
+      s.id === stepId ? { ...s, completed: !s.completed } : s
+    ));
+    setActiveTimer(null);
+  }, [existingTask, toggleStepComplete, hapticsEnabled]);
 
-  const totalMinutes = steps.reduce((acc, s) => acc + s.minutes, 0);
-  const completedSteps = steps.filter(s => s.completed).length;
+  if (viewMode === "work") {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+        <View style={[styles.workHeader, { paddingTop: headerHeight + Spacing.xl }]}>
+          <View style={styles.progressContainer}>
+            <View style={[styles.progressBar, { backgroundColor: theme.backgroundDefault }]}>
+              <View 
+                style={[
+                  styles.progressFill, 
+                  { 
+                    backgroundColor: theme.primary,
+                    width: steps.length > 0 ? `${(completedSteps / steps.length) * 100}%` : "0%",
+                  }
+                ]} 
+              />
+            </View>
+            <ThemedText style={[styles.progressText, { color: theme.textSecondary }]}>
+              {completedSteps} of {steps.length} bites complete
+            </ThemedText>
+          </View>
+        </View>
+
+        {nextIncompleteStep ? (
+          <View style={styles.currentStepContainer}>
+            <ThemedText style={[styles.currentStepLabel, { color: theme.textSecondary }]}>
+              Current bite
+            </ThemedText>
+            <View style={[styles.currentStepCard, { backgroundColor: theme.backgroundDefault }]}>
+              <ThemedText type="h3" style={styles.currentStepText}>
+                {nextIncompleteStep.text}
+              </ThemedText>
+              <View style={styles.timerContainer}>
+                <TimerButton 
+                  minutes={nextIncompleteStep.minutes} 
+                  stepText={nextIncompleteStep.text}
+                  isActive={activeTimer === nextIncompleteStep.id}
+                  onStart={() => setActiveTimer(nextIncompleteStep.id)}
+                  onComplete={() => handleToggleStep(nextIncompleteStep.id)}
+                />
+              </View>
+              <Pressable
+                onPress={() => handleToggleStep(nextIncompleteStep.id)}
+                style={[styles.markDoneButton, { borderColor: theme.primary }]}
+              >
+                <Feather name="check" size={20} color={theme.primary} />
+                <ThemedText style={{ color: theme.primary }}>Mark done</ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.allDoneContainer}>
+            <Feather name="check-circle" size={64} color={theme.success} />
+            <ThemedText type="h2" style={styles.allDoneTitle}>
+              All bites complete
+            </ThemedText>
+            <ThemedText style={[styles.allDoneMessage, { color: theme.textSecondary }]}>
+              You did it. That was enough.
+            </ThemedText>
+          </View>
+        )}
+
+        <View style={styles.upcomingContainer}>
+          <ThemedText style={[styles.upcomingLabel, { color: theme.textSecondary }]}>
+            {completedSteps > 0 ? "Remaining bites" : "All your bites"}
+          </ThemedText>
+          <FlatList
+            data={steps}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item, index }) => (
+              <StepItem
+                step={item}
+                index={index}
+                onToggle={() => handleToggleStep(item.id)}
+                compact
+              />
+            )}
+            contentContainerStyle={{ gap: Spacing.sm, paddingBottom: insets.bottom + Spacing.xl }}
+            showsVerticalScrollIndicator={false}
+          />
+        </View>
+
+        <View style={[styles.workFooter, { paddingBottom: insets.bottom + Spacing.lg }]}>
+          <ThemedText style={[styles.permissionText, { color: theme.textSecondary }]}>
+            You can stop after this step. That still counts.
+          </ThemedText>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAwareScrollViewCompat
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
       contentContainerStyle={{
-        paddingTop: headerHeight + Spacing.lg,
+        paddingTop: headerHeight + Spacing.xl,
         paddingBottom: insets.bottom + Spacing.xl,
         paddingHorizontal: Spacing.lg,
       }}
       scrollIndicatorInsets={{ bottom: insets.bottom }}
     >
       <View style={styles.section}>
-        <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
+        <ThemedText type="h3" style={styles.sectionTitle}>
           What's freezing you?
+        </ThemedText>
+        <ThemedText style={[styles.sectionHint, { color: theme.textSecondary }]}>
+          Name the task that feels impossible right now
         </ThemedText>
         <TextInput
           style={[
@@ -152,7 +255,7 @@ export default function BreakItDownScreen() {
               borderColor: theme.border,
             },
           ]}
-          placeholder="The task that feels impossible..."
+          placeholder="e.g., Clean my room"
           placeholderTextColor={theme.textSecondary}
           value={title}
           onChangeText={setTitle}
@@ -160,11 +263,17 @@ export default function BreakItDownScreen() {
         />
       </View>
 
+      <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
       <View style={styles.section}>
-        <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
-          Break it into tiny steps
+        <ThemedText type="h3" style={styles.sectionTitle}>
+          Break it into bites
         </ThemedText>
-        <View style={styles.stepInputContainer}>
+        <ThemedText style={[styles.sectionHint, { color: theme.textSecondary }]}>
+          Each step should take 2-10 minutes
+        </ThemedText>
+        
+        <View style={styles.addStepCard}>
           <TextInput
             style={[
               styles.stepInput,
@@ -174,81 +283,95 @@ export default function BreakItDownScreen() {
                 borderColor: theme.border,
               },
             ]}
-            placeholder="Add a micro-step..."
+            placeholder="What's the tiniest first step?"
             placeholderTextColor={theme.textSecondary}
             value={newStepText}
             onChangeText={setNewStepText}
             onSubmitEditing={handleAddStep}
             returnKeyType="done"
           />
-          <View style={styles.minuteSelector}>
+          
+          <View style={styles.stepControls}>
+            <View style={styles.minuteSelector}>
+              <ThemedText style={[styles.minuteLabel, { color: theme.textSecondary }]}>
+                Time:
+              </ThemedText>
+              <Pressable
+                onPress={() => setNewStepMinutes(Math.max(2, newStepMinutes - 1))}
+                style={[styles.minuteButton, { backgroundColor: theme.backgroundDefault }]}
+              >
+                <Feather name="minus" size={16} color={theme.text} />
+              </Pressable>
+              <View style={[styles.minuteDisplay, { backgroundColor: theme.backgroundDefault }]}>
+                <ThemedText style={styles.minuteText}>{newStepMinutes} min</ThemedText>
+              </View>
+              <Pressable
+                onPress={() => setNewStepMinutes(Math.min(10, newStepMinutes + 1))}
+                style={[styles.minuteButton, { backgroundColor: theme.backgroundDefault }]}
+              >
+                <Feather name="plus" size={16} color={theme.text} />
+              </Pressable>
+            </View>
+            
             <Pressable
-              onPress={() => setNewStepMinutes(Math.max(2, newStepMinutes - 1))}
-              style={[styles.minuteButton, { backgroundColor: theme.backgroundDefault }]}
+              onPress={handleAddStep}
+              style={[
+                styles.addButton, 
+                { backgroundColor: newStepText.trim() ? theme.primary : theme.backgroundDefault }
+              ]}
             >
-              <Feather name="minus" size={16} color={theme.text} />
-            </Pressable>
-            <ThemedText style={styles.minuteText}>{newStepMinutes}m</ThemedText>
-            <Pressable
-              onPress={() => setNewStepMinutes(Math.min(10, newStepMinutes + 1))}
-              style={[styles.minuteButton, { backgroundColor: theme.backgroundDefault }]}
-            >
-              <Feather name="plus" size={16} color={theme.text} />
+              <Feather name="plus" size={20} color={newStepText.trim() ? "#FFFFFF" : theme.textSecondary} />
+              <ThemedText style={{ color: newStepText.trim() ? "#FFFFFF" : theme.textSecondary }}>
+                Add
+              </ThemedText>
             </Pressable>
           </View>
-          <Pressable
-            onPress={handleAddStep}
-            style={[styles.addStepButton, { backgroundColor: theme.primary }]}
-          >
-            <Feather name="plus" size={20} color="#FFFFFF" />
-          </Pressable>
-        </View>
-
-        <View style={styles.stepsList}>
-          {steps.map((step, index) => (
-            <StepItem
-              key={step.id}
-              step={step}
-              index={index}
-              onToggle={() => handleToggleStep(step.id)}
-              onRemove={() => handleRemoveStep(step.id)}
-            />
-          ))}
         </View>
 
         {steps.length > 0 ? (
-          <View style={styles.summaryRow}>
-            <ThemedText style={[styles.summaryText, { color: theme.textSecondary }]}>
-              {completedSteps}/{steps.length} steps
-            </ThemedText>
-            <ThemedText style={[styles.summaryText, { color: theme.textSecondary }]}>
-              ~{totalMinutes} minutes total
-            </ThemedText>
+          <View style={styles.stepsSection}>
+            <View style={styles.stepsHeader}>
+              <ThemedText style={styles.stepsTitle}>Your bites ({steps.length})</ThemedText>
+              <ThemedText style={[styles.stepsTime, { color: theme.textSecondary }]}>
+                ~{totalMinutes} min total
+              </ThemedText>
+            </View>
+            <View style={styles.stepsList}>
+              {steps.map((step, index) => (
+                <StepItem
+                  key={step.id}
+                  step={step}
+                  index={index}
+                  onToggle={() => handleToggleStep(step.id)}
+                  onRemove={() => handleRemoveStep(step.id)}
+                />
+              ))}
+            </View>
           </View>
         ) : null}
       </View>
 
-      <View style={styles.section}>
-        <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
-          Energy level for this task
-        </ThemedText>
-        <EnergySelector
-          selected={energyLevel}
-          onSelect={(level) => {
-            Haptics.selectionAsync();
-            setEnergyLevel(level);
-          }}
-        />
-      </View>
+      <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-      {steps.length > 0 && !steps[0].completed ? (
-        <View style={styles.section}>
-          <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
-            Ready to start?
-          </ThemedText>
-          <TimerButton minutes={steps[0].minutes} stepText={steps[0].text} />
+      <View style={styles.section}>
+        <ThemedText type="h3" style={styles.sectionTitle}>
+          Energy needed
+        </ThemedText>
+        <ThemedText style={[styles.sectionHint, { color: theme.textSecondary }]}>
+          Match this task to your capacity
+        </ThemedText>
+        <View style={styles.energyContainer}>
+          <EnergySelector
+            selected={energyLevel}
+            onSelect={(level) => {
+              if (hapticsEnabled) {
+                Haptics.selectionAsync();
+              }
+              setEnergyLevel(level);
+            }}
+          />
         </View>
-      ) : null}
+      </View>
 
       <View style={styles.permissionContainer}>
         <ThemedText style={[styles.permissionText, { color: theme.textSecondary }]}>
@@ -260,75 +383,187 @@ export default function BreakItDownScreen() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   section: {
     marginBottom: Spacing.xl,
   },
-  label: {
-    marginBottom: Spacing.sm,
+  sectionTitle: {
+    marginBottom: Spacing.xs,
+  },
+  sectionHint: {
+    fontSize: 14,
+    fontStyle: "italic",
+    marginBottom: Spacing.lg,
   },
   titleInput: {
-    height: 48,
+    height: 56,
     padding: Spacing.md,
-    borderRadius: BorderRadius.xs,
+    borderRadius: BorderRadius.sm,
     borderWidth: 1,
-    fontSize: 16,
+    fontSize: 18,
     letterSpacing: 0.5,
   },
-  stepInputContainer: {
-    flexDirection: "row",
-    gap: Spacing.sm,
-    marginBottom: Spacing.md,
+  divider: {
+    height: 1,
+    marginVertical: Spacing.lg,
+  },
+  addStepCard: {
+    gap: Spacing.md,
   },
   stepInput: {
-    flex: 1,
-    height: 48,
+    height: 56,
     padding: Spacing.md,
-    borderRadius: BorderRadius.xs,
+    borderRadius: BorderRadius.sm,
     borderWidth: 1,
     fontSize: 16,
     letterSpacing: 0.5,
+  },
+  stepControls: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   minuteSelector: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.xs,
+    gap: Spacing.sm,
+  },
+  minuteLabel: {
+    fontSize: 14,
   },
   minuteButton: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: BorderRadius.xs,
     alignItems: "center",
     justifyContent: "center",
+  },
+  minuteDisplay: {
+    paddingHorizontal: Spacing.md,
+    height: 36,
+    borderRadius: BorderRadius.xs,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 70,
   },
   minuteText: {
-    width: 32,
-    textAlign: "center",
     fontWeight: "500",
   },
-  addStepButton: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.xs,
+  addButton: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    height: 44,
+    borderRadius: BorderRadius.sm,
+  },
+  stepsSection: {
+    marginTop: Spacing.xl,
+  },
+  stepsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  stepsTitle: {
+    fontWeight: "600",
+  },
+  stepsTime: {
+    fontSize: 14,
   },
   stepsList: {
     gap: Spacing.sm,
   },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: Spacing.md,
-  },
-  summaryText: {
-    fontSize: 14,
+  energyContainer: {
+    marginTop: Spacing.sm,
   },
   permissionContainer: {
     marginTop: Spacing.lg,
     alignItems: "center",
+    paddingHorizontal: Spacing.lg,
   },
   permissionText: {
     fontStyle: "italic",
     textAlign: "center",
+    lineHeight: 22,
+  },
+  workHeader: {
+    paddingHorizontal: Spacing.lg,
+  },
+  progressContainer: {
+    marginBottom: Spacing.lg,
+  },
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
+    overflow: "hidden",
+    marginBottom: Spacing.sm,
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 14,
+    textAlign: "center",
+  },
+  currentStepContainer: {
+    paddingHorizontal: Spacing.lg,
+    flex: 1,
+  },
+  currentStepLabel: {
+    fontSize: 14,
+    marginBottom: Spacing.sm,
+  },
+  currentStepCard: {
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+  },
+  currentStepText: {
+    textAlign: "center",
+    marginBottom: Spacing.xl,
+  },
+  timerContainer: {
+    marginBottom: Spacing.lg,
+  },
+  markDoneButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  allDoneContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: Spacing.lg,
+  },
+  allDoneTitle: {
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  allDoneMessage: {
+    fontStyle: "italic",
+    textAlign: "center",
+  },
+  upcomingContainer: {
+    flex: 1,
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.lg,
+  },
+  upcomingLabel: {
+    fontSize: 14,
+    marginBottom: Spacing.sm,
+  },
+  workFooter: {
+    paddingHorizontal: Spacing.lg,
+    alignItems: "center",
   },
 });
