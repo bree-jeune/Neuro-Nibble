@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { View, ScrollView, StyleSheet, TextInput, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -33,6 +33,25 @@ export default function ReflectScreen() {
   } = useAppStore();
 
   const [newDopamineItem, setNewDopamineItem] = useState("");
+
+  const brainDumpPlaceholders = [
+    "What's weighing on you?",
+    "Let it all out...",
+    "No judgment here...",
+    "Just get it out of your head",
+    "Write anything that's on your mind...",
+    "What would feel good to release?",
+    "Thoughts, worries, random stuff...",
+  ];
+
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % brainDumpPlaceholders.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleRoomSelect = useCallback((room: WeeklyRoom) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -98,7 +117,7 @@ export default function ReflectScreen() {
               borderColor: theme.border,
             },
           ]}
-          placeholder="Write anything that's on your mind..."
+          placeholder={brainDumpPlaceholders[placeholderIndex]}
           placeholderTextColor={theme.textSecondary}
           value={brainDump}
           onChangeText={setBrainDump}

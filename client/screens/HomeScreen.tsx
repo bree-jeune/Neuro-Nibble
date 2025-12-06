@@ -687,4 +687,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
   },
+  pulsingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  bodyDoublingLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
 });

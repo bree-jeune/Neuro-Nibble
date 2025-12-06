@@ -1,5 +1,7 @@
-import React, { useState, useCallback, useMemo } from "react";
-import { View, StyleSheet, TextInput, Pressable, Switch, Alert } from "react-native";
+import React, { useState, useCallback, useMemo, useLayoutEffect } from "react";
+import { View, StyleSheet, TextInput, Pressable, Switch, Alert, Modal } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { HeaderButton } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -19,6 +21,8 @@ export default function ProfileScreen() {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
+  const navigation = useNavigation();
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const {
     displayName,
@@ -137,13 +141,28 @@ export default function ProfileScreen() {
           onPress: () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             resetAllData();
+            setShowSettingsModal(false);
           },
         },
       ]
     );
   }, [resetAllData]);
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <HeaderButton
+          onPress={() => setShowSettingsModal(true)}
+          pressColor={theme.primary + "20"}
+        >
+          <Feather name="settings" size={22} color={theme.text} />
+        </HeaderButton>
+      ),
+    });
+  }, [navigation, theme]);
+
   return (
+    <>
     <KeyboardAwareScrollViewCompat
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
       contentContainerStyle={{
@@ -257,7 +276,7 @@ export default function ProfileScreen() {
           <View style={[styles.earlyDaysCard, { backgroundColor: theme.backgroundDefault }]}>
             <Feather name="sunrise" size={32} color={theme.primary} />
             <ThemedText type="h3" style={styles.earlyDaysTitle}>
-              Just getting started
+              Day 1: The Hardest Step
             </ThemedText>
             <ThemedText style={[styles.earlyDaysText, { color: theme.textSecondary }]}>
               Your progress stats will appear after a few days of use. For now, focus on small wins.
@@ -314,65 +333,6 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      <View style={styles.settingsSection}>
-        <ThemedText type="h3" style={styles.sectionTitle}>
-          Settings
-        </ThemedText>
-
-        <View style={[styles.settingRow, { borderBottomColor: theme.border }]}>
-          <View style={styles.settingInfo}>
-            <Feather name="smartphone" size={20} color={theme.text} />
-            <ThemedText style={styles.settingLabel}>Haptic feedback</ThemedText>
-          </View>
-          <Switch
-            value={hapticsEnabled}
-            onValueChange={handleHapticsToggle}
-            trackColor={{ false: theme.backgroundSecondary, true: theme.primary }}
-          />
-        </View>
-
-        <View style={[styles.settingRow, { borderBottomColor: theme.border }]}>
-          <View style={styles.settingInfo}>
-            <Feather name="bell" size={20} color={theme.text} />
-            <ThemedText style={styles.settingLabel}>Timer notifications</ThemedText>
-          </View>
-          <Switch
-            value={notificationsEnabled}
-            onValueChange={setNotificationsEnabled}
-            trackColor={{ false: theme.backgroundSecondary, true: theme.primary }}
-          />
-        </View>
-
-        <View style={[styles.settingRow, { borderBottomColor: theme.border }]}>
-          <View style={styles.settingInfo}>
-            <Feather name="zap" size={20} color={theme.text} />
-            <View style={styles.settingTextGroup}>
-              <ThemedText style={styles.settingLabel}>Energy check-in</ThemedText>
-              <ThemedText style={[styles.settingDesc, { color: theme.textSecondary }]}>
-                Ask about your energy level when starting tasks
-              </ThemedText>
-            </View>
-          </View>
-          <Switch
-            value={energyCheckInEnabled}
-            onValueChange={setEnergyCheckInEnabled}
-            trackColor={{ false: theme.backgroundSecondary, true: theme.primary }}
-          />
-        </View>
-      </View>
-
-      <View style={styles.dangerSection}>
-        <Pressable
-          onPress={handleResetData}
-          style={[styles.resetButton, { backgroundColor: theme.backgroundDefault }]}
-        >
-          <Feather name="trash-2" size={18} color={theme.error} />
-          <ThemedText style={[styles.resetText, { color: theme.error }]}>
-            Reset all data
-          </ThemedText>
-        </Pressable>
-      </View>
-
       <View style={styles.footerSection}>
         <ThemedText style={[styles.footerText, { color: theme.textSecondary }]}>
           NeuroNibble v1.0
@@ -382,6 +342,84 @@ export default function ProfileScreen() {
         </ThemedText>
       </View>
     </KeyboardAwareScrollViewCompat>
+
+    <Modal
+      visible={showSettingsModal}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowSettingsModal(false)}
+    >
+      <Pressable
+        style={styles.modalOverlay}
+        onPress={() => setShowSettingsModal(false)}
+      >
+        <Pressable
+          style={[styles.modalContent, { backgroundColor: theme.backgroundRoot }]}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <View style={styles.modalHeader}>
+            <ThemedText type="h3">Settings</ThemedText>
+            <Pressable onPress={() => setShowSettingsModal(false)}>
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+          </View>
+
+          <View style={[styles.settingRow, { borderBottomColor: theme.border }]}>
+            <View style={styles.settingInfo}>
+              <Feather name="smartphone" size={20} color={theme.text} />
+              <ThemedText style={styles.settingLabel}>Haptic feedback</ThemedText>
+            </View>
+            <Switch
+              value={hapticsEnabled}
+              onValueChange={handleHapticsToggle}
+              trackColor={{ false: theme.backgroundSecondary, true: theme.primary }}
+            />
+          </View>
+
+          <View style={[styles.settingRow, { borderBottomColor: theme.border }]}>
+            <View style={styles.settingInfo}>
+              <Feather name="bell" size={20} color={theme.text} />
+              <ThemedText style={styles.settingLabel}>Timer notifications</ThemedText>
+            </View>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={setNotificationsEnabled}
+              trackColor={{ false: theme.backgroundSecondary, true: theme.primary }}
+            />
+          </View>
+
+          <View style={[styles.settingRow, { borderBottomColor: theme.border }]}>
+            <View style={styles.settingInfo}>
+              <Feather name="zap" size={20} color={theme.text} />
+              <View style={styles.settingTextGroup}>
+                <ThemedText style={styles.settingLabel}>Energy check-in</ThemedText>
+                <ThemedText style={[styles.settingDesc, { color: theme.textSecondary }]}>
+                  Ask about energy level when starting tasks
+                </ThemedText>
+              </View>
+            </View>
+            <Switch
+              value={energyCheckInEnabled}
+              onValueChange={setEnergyCheckInEnabled}
+              trackColor={{ false: theme.backgroundSecondary, true: theme.primary }}
+            />
+          </View>
+
+          <View style={styles.modalDangerSection}>
+            <Pressable
+              onPress={handleResetData}
+              style={[styles.resetButton, { backgroundColor: theme.backgroundDefault }]}
+            >
+              <Feather name="trash-2" size={18} color={theme.error} />
+              <ThemedText style={[styles.resetText, { color: theme.error }]}>
+                Reset all data
+              </ThemedText>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+    </>
   );
 }
 
@@ -484,9 +522,6 @@ const styles = StyleSheet.create({
   historyBiteText: {
     flex: 1,
   },
-  settingsSection: {
-    marginBottom: Spacing.xl,
-  },
   sectionTitle: {
     marginBottom: Spacing.md,
   },
@@ -511,9 +546,6 @@ const styles = StyleSheet.create({
   settingDesc: {
     fontSize: 12,
     marginTop: 2,
-  },
-  dangerSection: {
-    marginBottom: Spacing.xl,
   },
   resetButton: {
     flexDirection: "row",
@@ -570,5 +602,27 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 14,
     lineHeight: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.lg,
+  },
+  modalContent: {
+    width: "100%",
+    maxWidth: 360,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.xl,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+  },
+  modalDangerSection: {
+    marginTop: Spacing.lg,
   },
 });
