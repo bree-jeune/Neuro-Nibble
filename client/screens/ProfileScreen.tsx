@@ -12,6 +12,7 @@ import { AvatarPicker } from "@/components/AvatarPicker";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useAppStore } from "@/lib/store";
+import { useSnackbarStore } from "@/lib/snackbarStore";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -33,7 +34,30 @@ export default function ProfileScreen() {
     resetAllData,
     tasks,
     activeDays,
+    firstUseDate,
   } = useAppStore();
+  const showSnackbar = useSnackbarStore((s) => s.show);
+
+  const [localName, setLocalName] = useState(displayName);
+  const hasNameChanged = localName !== displayName;
+
+  const daysSinceFirstUse = useMemo(() => {
+    if (!firstUseDate) return 0;
+    const firstDate = new Date(firstUseDate);
+    const today = new Date();
+    const diffTime = today.getTime() - firstDate.getTime();
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  }, [firstUseDate]);
+
+  const showStats = daysSinceFirstUse >= 3;
+
+  const handleSaveName = useCallback(() => {
+    if (hapticsEnabled) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    setDisplayName(localName);
+    showSnackbar("Name saved");
+  }, [localName, setDisplayName, hapticsEnabled, showSnackbar]);
 
   const completedSteps = tasks.reduce((acc, task) => {
     return acc + task.steps.filter(s => s.completed).length;
@@ -143,76 +167,103 @@ export default function ProfileScreen() {
         <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
           Display name (optional)
         </ThemedText>
-        <TextInput
-          style={[
-            styles.nameInput,
-            {
-              backgroundColor: theme.inputBackground,
-              color: theme.text,
-              borderColor: theme.border,
-            },
-          ]}
-          placeholder="What should we call you?"
-          placeholderTextColor={theme.textSecondary}
-          value={displayName}
-          onChangeText={setDisplayName}
-        />
+        <View style={styles.nameInputRow}>
+          <TextInput
+            style={[
+              styles.nameInput,
+              {
+                backgroundColor: theme.inputBackground,
+                color: theme.text,
+                borderColor: theme.border,
+                flex: 1,
+              },
+            ]}
+            placeholder="What should we call you?"
+            placeholderTextColor={theme.textSecondary}
+            value={localName}
+            onChangeText={setLocalName}
+          />
+          {hasNameChanged ? (
+            <Pressable
+              onPress={handleSaveName}
+              style={[styles.saveButton, { backgroundColor: theme.primary }]}
+            >
+              <Feather name="check" size={18} color="#FFFFFF" />
+              <ThemedText style={styles.saveButtonText}>Save</ThemedText>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
       <View style={styles.analyticsSection}>
         <ThemedText type="h3" style={styles.sectionTitle}>
           Your Progress
         </ThemedText>
-        <ThemedText style={[styles.effortMessage, { color: theme.textSecondary }]}>
-          {daysActiveThisWeek > 0
-            ? `You showed up ${daysActiveThisWeek} day${daysActiveThisWeek !== 1 ? "s" : ""} this week`
-            : "Every small bite counts"}
-        </ThemedText>
+        
+        {showStats ? (
+          <>
+            <ThemedText style={[styles.effortMessage, { color: theme.textSecondary }]}>
+              {daysActiveThisWeek > 0
+                ? `You showed up ${daysActiveThisWeek} day${daysActiveThisWeek !== 1 ? "s" : ""} this week`
+                : "Every small bite counts"}
+            </ThemedText>
 
-        <View style={styles.weeklyChart}>
-          {weeklyActivity.map((d, i) => (
-            <View key={i} style={styles.dayColumn}>
-              <View
-                style={[
-                  styles.dayDot,
-                  {
-                    backgroundColor: d.active ? theme.primary : theme.backgroundSecondary,
-                  },
-                ]}
-              />
-              <ThemedText style={[styles.dayLabel, { color: theme.textSecondary }]}>
-                {d.day}
-              </ThemedText>
+            <View style={styles.weeklyChart}>
+              {weeklyActivity.map((d, i) => (
+                <View key={i} style={styles.dayColumn}>
+                  <View
+                    style={[
+                      styles.dayDot,
+                      {
+                        backgroundColor: d.active ? theme.primary : theme.backgroundSecondary,
+                      },
+                    ]}
+                  />
+                  <ThemedText style={[styles.dayLabel, { color: theme.textSecondary }]}>
+                    {d.day}
+                  </ThemedText>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
 
-        <View style={styles.statsRow}>
-          <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>
-            <ThemedText type="h2" style={{ color: theme.primary }}>
-              {totalBites}
+            <View style={styles.statsRow}>
+              <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>
+                <ThemedText type="h2" style={{ color: theme.primary }}>
+                  {totalBites}
+                </ThemedText>
+                <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
+                  Total bites
+                </ThemedText>
+              </View>
+              <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>
+                <ThemedText type="h2" style={{ color: theme.primary }}>
+                  {completedSteps}
+                </ThemedText>
+                <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
+                  Bites done
+                </ThemedText>
+              </View>
+              <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>
+                <ThemedText type="h2" style={{ color: theme.primary }}>
+                  {completionRate}%
+                </ThemedText>
+                <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
+                  Completion
+                </ThemedText>
+              </View>
+            </View>
+          </>
+        ) : (
+          <View style={[styles.earlyDaysCard, { backgroundColor: theme.backgroundDefault }]}>
+            <Feather name="sunrise" size={32} color={theme.primary} />
+            <ThemedText type="h3" style={styles.earlyDaysTitle}>
+              Just getting started
             </ThemedText>
-            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
-              Total bites
+            <ThemedText style={[styles.earlyDaysText, { color: theme.textSecondary }]}>
+              Your progress stats will appear after a few days of use. For now, focus on small wins.
             </ThemedText>
           </View>
-          <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>
-            <ThemedText type="h2" style={{ color: theme.primary }}>
-              {completedSteps}
-            </ThemedText>
-            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
-              Bites done
-            </ThemedText>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>
-            <ThemedText type="h2" style={{ color: theme.primary }}>
-              {completionRate}%
-            </ThemedText>
-            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
-              Completion
-            </ThemedText>
-          </View>
-        </View>
+        )}
       </View>
 
       <View style={styles.historySection}>
@@ -486,5 +537,38 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontStyle: "italic",
     marginTop: Spacing.xs,
+  },
+  nameInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  saveButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.xs,
+    height: 48,
+  },
+  saveButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  earlyDaysCard: {
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  earlyDaysTitle: {
+    textAlign: "center",
+  },
+  earlyDaysText: {
+    textAlign: "center",
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

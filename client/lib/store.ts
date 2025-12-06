@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { AppState, Task, EnergyLevel, WeeklyRoom, Step } from "@/lib/types";
+import type { AppState, Task, EnergyLevel, WeeklyRoom, Step, DailyReflection } from "@/lib/types";
 
 interface AppStore extends AppState {
   setEnergyLevel: (level: EnergyLevel) => void;
@@ -25,6 +25,7 @@ interface AppStore extends AppState {
   restoreBookendState: (completed: boolean, lastDate: string) => void;
   markActiveDay: () => void;
   completeOnboarding: () => void;
+  addDailyReflection: (text: string) => void;
   resetAllData: () => void;
 }
 
@@ -45,6 +46,7 @@ const initialState: AppState = {
   activeDays: [],
   onboardingCompleted: false,
   firstUseDate: "",
+  dailyReflections: [],
 };
 
 export const useAppStore = create<AppStore>()(
@@ -230,6 +232,21 @@ export const useAppStore = create<AppStore>()(
       },
       
       completeOnboarding: () => set({ onboardingCompleted: true }),
+      
+      addDailyReflection: (text) => {
+        const today = new Date().toISOString().split("T")[0];
+        set((state) => {
+          const existingIndex = state.dailyReflections.findIndex((r) => r.date === today);
+          if (existingIndex >= 0) {
+            const updated = [...state.dailyReflections];
+            updated[existingIndex] = { date: today, text };
+            return { dailyReflections: updated };
+          }
+          return { 
+            dailyReflections: [...state.dailyReflections.slice(-30), { date: today, text }] 
+          };
+        });
+      },
       
       resetAllData: () => set(initialState),
     }),

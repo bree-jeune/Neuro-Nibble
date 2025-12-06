@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { View, ScrollView, StyleSheet, Pressable, Modal } from "react-native";
+import { View, ScrollView, StyleSheet, Pressable, Modal, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -29,6 +29,7 @@ export default function HomeScreen() {
   const [showEndDayModal, setShowEndDayModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showEnergyCheck, setShowEnergyCheck] = useState(false);
+  const [reflectionText, setReflectionText] = useState("");
 
   const { 
     energyLevel, 
@@ -43,11 +44,17 @@ export default function HomeScreen() {
     hapticsEnabled,
     dopamineMenu,
     energyCheckInEnabled,
+    displayName,
+    addDailyReflection,
   } = useAppStore();
   const showSnackbar = useSnackbarStore((s) => s.show);
 
   const recentTasks = tasks
-    .filter((t) => t.lastWorkedOn)
+    .filter((t) => {
+      if (!t.lastWorkedOn) return false;
+      const allStepsCompleted = t.steps.length > 0 && t.steps.every((s) => s.completed);
+      return !allStepsCompleted;
+    })
     .sort((a, b) => new Date(b.lastWorkedOn!).getTime() - new Date(a.lastWorkedOn!).getTime())
     .slice(0, 3);
 
@@ -103,8 +110,14 @@ export default function HomeScreen() {
     if (hapticsEnabled) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
+    
+    if (reflectionText.trim()) {
+      addDailyReflection(reflectionText.trim());
+    }
+    
     setBookendCompleted(true);
     setShowEndDayModal(false);
+    setReflectionText("");
     showSnackbar("Day ended. Rest well.", () => {
       restoreBookendState(prevCompleted, prevLastDate);
     });
@@ -140,7 +153,7 @@ export default function HomeScreen() {
       >
         <View style={styles.greetingContainer}>
           <ThemedText type="h2" style={styles.greeting}>
-            {getDayName()}
+            {displayName ? `Good ${getGreeting()}, ${displayName}` : getDayName()}
           </ThemedText>
         </View>
 
@@ -247,6 +260,28 @@ export default function HomeScreen() {
                 <ThemedText style={styles.rewardItem}>{getRandomDopamineItem()}</ThemedText>
               </View>
             ) : null}
+
+            <View style={styles.reflectionSection}>
+              <ThemedText style={[styles.reflectionLabel, { color: theme.textSecondary }]}>
+                Anything on your mind? (optional)
+              </ThemedText>
+              <TextInput
+                style={[
+                  styles.reflectionInput,
+                  {
+                    backgroundColor: theme.inputBackground,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  },
+                ]}
+                placeholder="A small win, a thought, anything..."
+                placeholderTextColor={theme.textSecondary}
+                value={reflectionText}
+                onChangeText={setReflectionText}
+                multiline
+                numberOfLines={3}
+              />
+            </View>
 
             <Pressable
               onPress={handleEndDay}
@@ -557,5 +592,23 @@ const styles = StyleSheet.create({
   },
   skipEnergyButton: {
     padding: Spacing.sm,
+  },
+  reflectionSection: {
+    width: "100%",
+    marginBottom: Spacing.lg,
+  },
+  reflectionLabel: {
+    fontSize: 14,
+    marginBottom: Spacing.sm,
+    fontStyle: "italic",
+  },
+  reflectionInput: {
+    width: "100%",
+    minHeight: 80,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    fontSize: 15,
+    textAlignVertical: "top",
   },
 });

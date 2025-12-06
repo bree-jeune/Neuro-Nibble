@@ -32,6 +32,11 @@ export interface Task {
   };
 }
 
+export interface DailyReflection {
+  date: string;
+  text: string;
+}
+
 export interface AppState {
   energyLevel: EnergyLevel;
   weeklyRoom: WeeklyRoom;
@@ -49,4 +54,5 @@ export interface AppState {
   activeDays: string[];
   onboardingCompleted: boolean;
   firstUseDate: string;
+  dailyReflections: DailyReflection[];
 }

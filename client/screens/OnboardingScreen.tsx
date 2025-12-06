@@ -22,6 +22,14 @@ interface OnboardingSlide {
 const slides: OnboardingSlide[] = [
   {
     id: "1",
+    icon: "target",
+    title: "This isn't a to-do list",
+    subtitle: "It's a task shrinker",
+    description:
+      "NeuroNibble helps you start when starting feels impossible. We break overwhelming tasks into tiny bites you can actually do.",
+  },
+  {
+    id: "2",
     icon: "pause-circle",
     title: "When you freeze...",
     subtitle: "That's normal",
@@ -29,7 +37,7 @@ const slides: OnboardingSlide[] = [
       "Some tasks feel impossible. Your brain isn't broken. It just needs smaller pieces.",
   },
   {
-    id: "2",
+    id: "3",
     icon: "scissors",
     title: "Break it into bites",
     subtitle: "2-10 minutes each",
@@ -37,7 +45,7 @@ const slides: OnboardingSlide[] = [
       "Turn any frozen task into tiny bites. Each one is small enough to start, even on hard days.",
   },
   {
-    id: "3",
+    id: "4",
     icon: "zap",
     title: "Match your energy",
     subtitle: "Low, Medium, or High",
