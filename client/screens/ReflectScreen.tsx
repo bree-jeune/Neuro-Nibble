@@ -10,13 +10,12 @@ import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { WeeklyRoomCard } from "@/components/WeeklyRoomCard";
-import { DopamineMenuItem } from "@/components/DopamineMenuItem";
 import { SwipeableThoughtCard } from "@/components/SwipeableThoughtCard";
-import { SpinForDopamine } from "@/components/SpinForDopamine";
+import { DopamineVendingMachine } from "@/components/DopamineVendingMachine";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useAppStore } from "@/lib/store";
-import type { WeeklyRoom, ThoughtItem } from "@/lib/types";
+import type { WeeklyRoom, ThoughtItem, DopamineCost } from "@/lib/types";
 
 export default function ReflectScreen() {
   const insets = useSafeAreaInsets();
@@ -36,9 +35,9 @@ export default function ReflectScreen() {
     removeDopamineItem,
     oneTinyThing,
     setOneTinyThing,
+    hapticsEnabled,
   } = useAppStore();
 
-  const [newDopamineItem, setNewDopamineItem] = useState("");
   const [newThought, setNewThought] = useState("");
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -70,18 +69,22 @@ export default function ReflectScreen() {
   }, []);
 
   const handleRoomSelect = useCallback((room: WeeklyRoom) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (hapticsEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     setWeeklyRoom(room);
-  }, [setWeeklyRoom]);
+  }, [setWeeklyRoom, hapticsEnabled]);
 
   const handleAddThought = useCallback(() => {
     if (newThought.trim()) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (hapticsEnabled) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
       addThought(newThought.trim());
       setNewThought("");
       Keyboard.dismiss();
     }
-  }, [newThought, addThought]);
+  }, [newThought, addThought, hapticsEnabled]);
 
   const handleVentThought = useCallback((id: string) => {
     removeThought(id);
@@ -93,17 +96,12 @@ export default function ReflectScreen() {
     showToastMessage("Moved to Tasks");
   }, [convertThoughtToTask, showToastMessage]);
 
-  const handleAddDopamineItem = useCallback(() => {
-    if (newDopamineItem.trim()) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      addDopamineItem(newDopamineItem.trim());
-      setNewDopamineItem("");
-    }
-  }, [newDopamineItem, addDopamineItem]);
+  const handleAddDopamineItem = useCallback((text: string, cost: DopamineCost) => {
+    addDopamineItem(text, cost);
+  }, [addDopamineItem]);
 
-  const handleRemoveDopamineItem = useCallback((item: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    removeDopamineItem(item);
+  const handleRemoveDopamineItem = useCallback((id: string) => {
+    removeDopamineItem(id);
   }, [removeDopamineItem]);
 
   const rooms: WeeklyRoom[] = ["chaos", "gentle", "build", "repair"];
@@ -202,48 +200,16 @@ export default function ReflectScreen() {
 
         <View style={styles.section}>
           <ThemedText type="h3" style={styles.sectionTitle}>
-            Your Dopamine Menu
+            Dopamine Vending Machine
           </ThemedText>
           <ThemedText style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
             Things YOUR brain actually likes (not shoulds).
           </ThemedText>
-          <View style={styles.dopamineInputRow}>
-            <TextInput
-              style={[
-                styles.dopamineInput,
-                {
-                  backgroundColor: theme.inputBackground,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              placeholder="Add something you enjoy..."
-              placeholderTextColor={theme.textSecondary}
-              value={newDopamineItem}
-              onChangeText={setNewDopamineItem}
-              onSubmitEditing={handleAddDopamineItem}
-              returnKeyType="done"
-            />
-            <Pressable
-              onPress={handleAddDopamineItem}
-              style={[styles.addButton, { backgroundColor: theme.primary }]}
-            >
-              <Feather name="plus" size={20} color="#FFFFFF" />
-            </Pressable>
-          </View>
-          <View style={styles.dopamineList}>
-            {dopamineMenu.map((item, index) => (
-              <DopamineMenuItem
-                key={index}
-                item={item}
-                onRemove={() => handleRemoveDopamineItem(item)}
-              />
-            ))}
-          </View>
-
-          <View style={styles.spinContainer}>
-            <SpinForDopamine items={dopamineMenu} />
-          </View>
+          <DopamineVendingMachine
+            items={dopamineMenu}
+            onAddItem={handleAddDopamineItem}
+            onRemoveItem={handleRemoveDopamineItem}
+          />
         </View>
 
         <View style={styles.section}>
@@ -346,33 +312,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-  },
-  dopamineInputRow: {
-    flexDirection: "row",
-    gap: Spacing.sm,
-    marginBottom: Spacing.md,
-  },
-  dopamineInput: {
-    flex: 1,
-    height: 48,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.xs,
-    borderWidth: 1,
-    fontSize: 16,
-    letterSpacing: 0.5,
-  },
-  addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.xs,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dopamineList: {
-    gap: Spacing.sm,
-  },
-  spinContainer: {
-    marginTop: Spacing.lg,
   },
   tinyThingInput: {
     height: 48,

@@ -1,0 +1,79 @@
+need to fix several functional issues in the NeuroNibble app. Please apply the following changes:
+
+1. Fix Haptic Feedback Logic:
+
+Create a reusable helper function triggerHaptic(type) that imports the isHapticEnabled boolean from our global store/settings.
+
+If isHapticEnabled is false, the function should return immediately without vibrating.
+
+Replace all direct Haptics.impactAsync() calls in the app with this new safe function.
+
+2. Make the Avatar Editable (Local):
+
+In ProfileScreen.tsx, make the Avatar circle tappable.
+
+On tap, open a simple modal allowing the user to select an emoji or icon to represent them. Save this selection to AsyncStorage.
+
+3. "Live" Social Counter Logic:
+
+In HomeScreen.tsx, create a function getLiveUserCount() that returns a number based on the current UTC hour.
+
+Logic: Higher numbers (e.g., 40-80) during business hours, lower (10-30) during nights. Add a random variance of +/- 3 so it changes slightly on refresh.
+
+Styling Fix: Increase the padding of the social counter container: paddingVertical: 12, paddingHorizontal: 16, and ensure the text is centered with textAlign: 'center'.
+
+Prompt 2: Reflect Tab Hierarchy & Header Rename
+Copy/Paste this into Replit:
+
+Prompt for Replit AI:
+
+I need to redesign the ReflectScreen.tsx to improve visual hierarchy and flow.
+
+1. Header Update:
+
+Rename the header title from "Thought Processor" back to "Brain Dump".
+
+2. Layout Restructuring (Card System):
+
+Wrap the three main sections (Weekly Room, Brain Dump, Dopamine Menu) into distinct Cards with consistent styling (rounded corners, slight background color difference from main background).
+
+Hierarchy:
+
+Top: "How are you showing up?" (Weekly Room Selector) - Make this compact.
+
+Middle (Main Focus): "Brain Dump" - Give this the most space.
+
+Bottom: "Dopamine Menu" - Keep this distinct.
+
+3. Visual Separation:
+
+Add increased vertical spacing (gap: 24) between these cards so they don't visually bleed together.
+
+Prompt 3: Dynamic Gentle Footer (Contextual & Low-Stim)
+Copy/Paste this into Replit:
+
+Prompt for Replit AI:
+
+I need to replace the static footer text ("You're allowed to stop...") with a dynamic, context-aware component to reduce visual repetition and overstimulation.
+
+1. Create DynamicFooter.tsx component:
+
+It should accept a screen prop (e.g., 'home', 'tasks', 'reflect').
+
+Styling: Use a smaller font size (12px), lighter text color (e.g., #888), and center alignment to reduce visual weight.
+
+2. Message Pools:
+
+Create a config file with arrays of affirming messages for each context:
+
+Home/Tasks: "Small steps count.", "Momentum over perfection.", "You can stop whenever."
+
+Reflect: "Your feelings are valid.", "No fixing, just dumping.", "Rest is productive."
+
+You/Settings: "You are not a machine.", "Adjust to fit your brain.", "There is no 'right' way."
+
+3. Logic:
+
+On component mount, select one random message from the matching pool.
+
+Do not auto-rotate the message while the user is viewing (to avoid distraction). Only change it when the screen is refreshed or revisited.
