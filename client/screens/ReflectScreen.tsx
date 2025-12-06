@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { View, ScrollView, StyleSheet, TextInput, Pressable, FlatList, Keyboard, Platform } from "react-native";
+import { View, StyleSheet, TextInput, Pressable, FlatList, Keyboard, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -8,6 +8,7 @@ import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { WeeklyRoomCard } from "@/components/WeeklyRoomCard";
 import { DopamineMenuItem } from "@/components/DopamineMenuItem";
 import { SwipeableThoughtCard } from "@/components/SwipeableThoughtCard";
@@ -117,7 +118,7 @@ export default function ReflectScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
-      <ScrollView
+      <KeyboardAwareScrollViewCompat
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingTop: headerHeight + Spacing.lg,
@@ -273,7 +274,7 @@ export default function ReflectScreen() {
             Gentle weeks are valid.
           </ThemedText>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollViewCompat>
 
       {showToast ? (
         <Animated.View
