@@ -113,18 +113,18 @@ export default function BreakItDownScreen() {
         minutes: newStepMinutes,
         completed: false,
       };
-      setSteps([...steps, newStep]);
+      setSteps(prev => [...prev, newStep]);
       setNewStepText("");
       setNewStepMinutes(5);
     }
-  }, [newStepText, newStepMinutes, steps, hapticsEnabled]);
+  }, [newStepText, newStepMinutes, hapticsEnabled]);
 
   const handleRemoveStep = useCallback((stepId: string) => {
     if (hapticsEnabled) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    setSteps(steps.filter(s => s.id !== stepId));
-  }, [steps, hapticsEnabled]);
+    setSteps(prev => prev.filter(s => s.id !== stepId));
+  }, [hapticsEnabled]);
 
   const handleToggleStep = useCallback((stepId: string) => {
     if (hapticsEnabled) {
@@ -261,6 +261,31 @@ export default function BreakItDownScreen() {
           onChangeText={setTitle}
           autoFocus={!existingTask}
         />
+        {!title.trim() ? (
+          <View style={styles.examplesContainer}>
+            <ThemedText style={[styles.examplesLabel, { color: theme.textSecondary }]}>
+              Or try one of these:
+            </ThemedText>
+            <View style={styles.exampleChips}>
+              {["Reply to emails", "Do laundry", "Start that project", "Make a phone call"].map((example) => (
+                <Pressable
+                  key={example}
+                  onPress={() => {
+                    if (hapticsEnabled) {
+                      Haptics.selectionAsync();
+                    }
+                    setTitle(example);
+                  }}
+                  style={[styles.exampleChip, { backgroundColor: theme.backgroundDefault }]}
+                >
+                  <ThemedText style={[styles.exampleChipText, { color: theme.text }]}>
+                    {example}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        ) : null}
       </View>
 
       <View style={[styles.divider, { backgroundColor: theme.border }]} />
@@ -292,25 +317,33 @@ export default function BreakItDownScreen() {
           />
           
           <View style={styles.stepControls}>
-            <View style={styles.minuteSelector}>
-              <ThemedText style={[styles.minuteLabel, { color: theme.textSecondary }]}>
-                Time:
-              </ThemedText>
-              <Pressable
-                onPress={() => setNewStepMinutes(Math.max(2, newStepMinutes - 1))}
-                style={[styles.minuteButton, { backgroundColor: theme.backgroundDefault }]}
-              >
-                <Feather name="minus" size={16} color={theme.text} />
-              </Pressable>
-              <View style={[styles.minuteDisplay, { backgroundColor: theme.backgroundDefault }]}>
-                <ThemedText style={styles.minuteText}>{newStepMinutes} min</ThemedText>
-              </View>
-              <Pressable
-                onPress={() => setNewStepMinutes(Math.min(10, newStepMinutes + 1))}
-                style={[styles.minuteButton, { backgroundColor: theme.backgroundDefault }]}
-              >
-                <Feather name="plus" size={16} color={theme.text} />
-              </Pressable>
+            <View style={styles.timePresets}>
+              {[2, 5, 10].map((mins) => (
+                <Pressable
+                  key={mins}
+                  onPress={() => {
+                    if (hapticsEnabled) {
+                      Haptics.selectionAsync();
+                    }
+                    setNewStepMinutes(mins);
+                  }}
+                  style={[
+                    styles.timePresetChip,
+                    {
+                      backgroundColor: newStepMinutes === mins ? theme.primary : theme.backgroundDefault,
+                    },
+                  ]}
+                >
+                  <ThemedText
+                    style={[
+                      styles.timePresetText,
+                      { color: newStepMinutes === mins ? "#FFFFFF" : theme.text },
+                    ]}
+                  >
+                    {mins} min
+                  </ThemedText>
+                </Pressable>
+              ))}
             </View>
             
             <Pressable
@@ -326,6 +359,47 @@ export default function BreakItDownScreen() {
               </ThemedText>
             </Pressable>
           </View>
+
+          {steps.length === 0 ? (
+            <View style={styles.biteExamplesContainer}>
+              <ThemedText style={[styles.biteExamplesLabel, { color: theme.textSecondary }]}>
+                Example bites for inspiration:
+              </ThemedText>
+              <View style={styles.biteExamples}>
+                {[
+                  { text: "Open the app or document", mins: 2 },
+                  { text: "Set a 5-minute timer", mins: 5 },
+                  { text: "Put away just 5 items", mins: 5 },
+                  { text: "Write just the first sentence", mins: 2 },
+                ].map((bite, index) => (
+                  <Pressable
+                    key={index}
+                    onPress={() => {
+                      if (hapticsEnabled) {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }
+                      const newStep: Step = {
+                        id: Date.now().toString() + index,
+                        text: bite.text,
+                        minutes: bite.mins,
+                        completed: false,
+                      };
+                      setSteps(prev => [...prev, newStep]);
+                    }}
+                    style={[styles.biteExample, { backgroundColor: theme.backgroundDefault }]}
+                  >
+                    <View style={styles.biteExampleContent}>
+                      <ThemedText style={styles.biteExampleText}>{bite.text}</ThemedText>
+                      <ThemedText style={[styles.biteExampleTime, { color: theme.textSecondary }]}>
+                        {bite.mins} min
+                      </ThemedText>
+                    </View>
+                    <Feather name="plus-circle" size={18} color={theme.primary} />
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
         </View>
 
         {steps.length > 0 ? (
@@ -425,31 +499,69 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  minuteSelector: {
+  examplesContainer: {
+    marginTop: Spacing.md,
+  },
+  examplesLabel: {
+    fontSize: 13,
+    marginBottom: Spacing.sm,
+  },
+  exampleChips: {
     flexDirection: "row",
-    alignItems: "center",
+    flexWrap: "wrap",
     gap: Spacing.sm,
   },
-  minuteLabel: {
+  exampleChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+  },
+  exampleChipText: {
+    fontSize: 13,
+  },
+  timePresets: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  timePresetChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    minWidth: 56,
+    alignItems: "center",
+  },
+  timePresetText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  biteExamplesContainer: {
+    marginTop: Spacing.lg,
+    paddingTop: Spacing.md,
+  },
+  biteExamplesLabel: {
+    fontSize: 13,
+    marginBottom: Spacing.md,
+  },
+  biteExamples: {
+    gap: Spacing.sm,
+  },
+  biteExample: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+  },
+  biteExampleContent: {
+    flex: 1,
+    marginRight: Spacing.md,
+  },
+  biteExampleText: {
     fontSize: 14,
   },
-  minuteButton: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.xs,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  minuteDisplay: {
-    paddingHorizontal: Spacing.md,
-    height: 36,
-    borderRadius: BorderRadius.xs,
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 70,
-  },
-  minuteText: {
-    fontWeight: "500",
+  biteExampleTime: {
+    fontSize: 12,
+    marginTop: 2,
   },
   addButton: {
     flexDirection: "row",
