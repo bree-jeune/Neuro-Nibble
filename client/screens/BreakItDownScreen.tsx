@@ -5,7 +5,7 @@ import { useHeaderHeight, HeaderButton } from "@react-navigation/elements";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+import { triggerHaptic } from "@/lib/haptics";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { ThemedText } from "@/components/ThemedText";
@@ -82,7 +82,7 @@ export default function BreakItDownScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "BreakItDown">>();
 
-  const { tasks, addTask, updateTask, toggleStepComplete, restoreStep, archiveTask, hapticsEnabled } = useAppStore();
+  const { tasks, addTask, updateTask, toggleStepComplete, restoreStep, archiveTask } = useAppStore();
   const showSnackbar = useSnackbarStore((s) => s.show);
   
   const existingTask = route.params?.taskId 
@@ -163,9 +163,7 @@ export default function BreakItDownScreen() {
   const handleStartMinimal = useCallback(() => {
     if (!canStartMinimal) return;
     
-    if (hapticsEnabled) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    triggerHaptic("success");
     
     const newStep: Step = {
       id: Date.now().toString(),
@@ -184,14 +182,12 @@ export default function BreakItDownScreen() {
     });
     
     setViewMode("work");
-  }, [canStartMinimal, title, firstStepText, addTask, hapticsEnabled]);
+  }, [canStartMinimal, title, firstStepText, addTask]);
 
   const handleSave = useCallback(() => {
     if (!canSave) return;
     
-    if (hapticsEnabled) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    triggerHaptic("success");
     
     if (existingTask) {
       updateTask(existingTask.id, {
@@ -209,13 +205,11 @@ export default function BreakItDownScreen() {
     }
     
     setViewMode("work");
-  }, [canSave, existingTask, title, steps, energyLevel, addTask, updateTask, hapticsEnabled]);
+  }, [canSave, existingTask, title, steps, energyLevel, addTask, updateTask]);
 
   const handleAddStep = useCallback(() => {
     if (newStepText.trim()) {
-      if (hapticsEnabled) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+      triggerHaptic("light");
       const newStep: Step = {
         id: Date.now().toString(),
         text: newStepText.trim(),
@@ -226,12 +220,10 @@ export default function BreakItDownScreen() {
       setNewStepText("");
       setNewStepMinutes(5);
     }
-  }, [newStepText, newStepMinutes, hapticsEnabled]);
+  }, [newStepText, newStepMinutes]);
 
   const handleRemoveStep = useCallback((stepId: string) => {
-    if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    triggerHaptic("light");
     const removedStep = steps.find(s => s.id === stepId);
     const removedIndex = steps.findIndex(s => s.id === stepId);
     
@@ -249,21 +241,17 @@ export default function BreakItDownScreen() {
         return newSteps;
       });
     });
-  }, [hapticsEnabled, steps, showSnackbar]);
+  }, [steps, showSnackbar]);
 
   const handleEditStep = useCallback((stepId: string, text: string, minutes: number) => {
-    if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    triggerHaptic("light");
     setSteps(prev => prev.map(s => 
       s.id === stepId ? { ...s, text, minutes } : s
     ));
-  }, [hapticsEnabled]);
+  }, []);
 
   const handleMoveStep = useCallback((stepId: string, direction: "up" | "down") => {
-    if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    triggerHaptic("light");
     setSteps(prev => {
       const index = prev.findIndex(s => s.id === stepId);
       if (index === -1) return prev;
@@ -275,14 +263,12 @@ export default function BreakItDownScreen() {
       [newSteps[index], newSteps[swapIndex]] = [newSteps[swapIndex], newSteps[index]];
       return newSteps;
     });
-  }, [hapticsEnabled]);
+  }, []);
 
   const activeDays = useAppStore((s) => s.activeDays);
 
   const handleToggleStep = useCallback((stepId: string, skipCelebration = false) => {
-    if (hapticsEnabled) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    triggerHaptic("success");
     const step = steps.find(s => s.id === stepId);
     if (!step) return;
     
@@ -315,7 +301,7 @@ export default function BreakItDownScreen() {
     if (!wasCompleted && !skipCelebration) {
       setShowCelebration(true);
     }
-  }, [existingTask, toggleStepComplete, hapticsEnabled, steps]);
+  }, [existingTask, toggleStepComplete, steps]);
 
   const handleCelebrationChoice = useCallback((keepGoing: boolean) => {
     setShowCelebration(false);
@@ -477,9 +463,7 @@ export default function BreakItDownScreen() {
                 <Pressable 
                   onPress={() => {
                     if (existingTask) {
-                      if (hapticsEnabled) {
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                      }
+                      triggerHaptic("success");
                       archiveTask(existingTask.id);
                       setShowCompletionModal(false);
                       navigation.goBack();
@@ -573,9 +557,7 @@ export default function BreakItDownScreen() {
                 <Pressable
                   key={chip}
                   onPress={() => {
-                    if (hapticsEnabled) {
-                      Haptics.selectionAsync();
-                    }
+                    triggerHaptic("selection");
                     setTitle(chip);
                   }}
                   style={[
@@ -724,9 +706,7 @@ export default function BreakItDownScreen() {
                 <Pressable
                   key={example}
                   onPress={() => {
-                    if (hapticsEnabled) {
-                      Haptics.selectionAsync();
-                    }
+                    triggerHaptic("selection");
                     setTitle(example);
                     setSteps(getTemplateSteps(example));
                   }}
@@ -776,9 +756,7 @@ export default function BreakItDownScreen() {
                 <Pressable
                   key={mins}
                   onPress={() => {
-                    if (hapticsEnabled) {
-                      Haptics.selectionAsync();
-                    }
+                    triggerHaptic("selection");
                     setNewStepMinutes(mins);
                   }}
                   style={[
@@ -840,9 +818,7 @@ export default function BreakItDownScreen() {
                     <Pressable
                       key={index}
                       onPress={() => {
-                        if (hapticsEnabled) {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        }
+                        triggerHaptic("light");
                         const newStep: Step = {
                           id: Date.now().toString() + index,
                           text: bite.text,
@@ -910,9 +886,7 @@ export default function BreakItDownScreen() {
           <EnergySelector
             selected={energyLevel}
             onSelect={(level) => {
-              if (hapticsEnabled) {
-                Haptics.selectionAsync();
-              }
+              triggerHaptic("selection");
               setEnergyLevel(level);
             }}
           />

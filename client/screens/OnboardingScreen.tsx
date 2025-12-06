@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from "react";
 import { View, StyleSheet, Pressable, Dimensions, FlatList, ViewToken } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+import { triggerHaptic } from "@/lib/haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -57,27 +57,23 @@ const slides: OnboardingSlide[] = [
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { completeOnboarding, hapticsEnabled } = useAppStore();
+  const { completeOnboarding } = useAppStore();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
   const handleNext = useCallback(() => {
-    if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    triggerHaptic("light");
     if (currentIndex < slides.length - 1) {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
     } else {
       completeOnboarding();
     }
-  }, [currentIndex, completeOnboarding, hapticsEnabled]);
+  }, [currentIndex, completeOnboarding]);
 
   const handleSkip = useCallback(() => {
-    if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    triggerHaptic("light");
     completeOnboarding();
-  }, [completeOnboarding, hapticsEnabled]);
+  }, [completeOnboarding]);
 
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {

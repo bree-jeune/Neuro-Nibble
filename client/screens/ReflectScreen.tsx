@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+import { triggerHaptic } from "@/lib/haptics";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -35,7 +35,6 @@ export default function ReflectScreen() {
     removeDopamineItem,
     oneTinyThing,
     setOneTinyThing,
-    hapticsEnabled,
   } = useAppStore();
 
   const [newThought, setNewThought] = useState("");
@@ -69,22 +68,18 @@ export default function ReflectScreen() {
   }, []);
 
   const handleRoomSelect = useCallback((room: WeeklyRoom) => {
-    if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    triggerHaptic("medium");
     setWeeklyRoom(room);
-  }, [setWeeklyRoom, hapticsEnabled]);
+  }, [setWeeklyRoom]);
 
   const handleAddThought = useCallback(() => {
     if (newThought.trim()) {
-      if (hapticsEnabled) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+      triggerHaptic("light");
       addThought(newThought.trim());
       setNewThought("");
       Keyboard.dismiss();
     }
-  }, [newThought, addThought, hapticsEnabled]);
+  }, [newThought, addThought]);
 
   const handleVentThought = useCallback((id: string) => {
     removeThought(id);

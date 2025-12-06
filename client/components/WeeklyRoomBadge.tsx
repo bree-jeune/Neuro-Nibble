@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { StyleSheet, View, Pressable, Modal } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 
+import { triggerHaptic } from "@/lib/haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
@@ -51,7 +51,7 @@ export const getRoomConfig = (room: WeeklyRoom) => {
 
 export function WeeklyRoomBadge({ room, interactive = true }: WeeklyRoomBadgeProps) {
   const { theme } = useTheme();
-  const { setWeeklyRoom, hapticsEnabled, firstUseDate } = useAppStore();
+  const { setWeeklyRoom, firstUseDate } = useAppStore();
   const [showSelector, setShowSelector] = useState(false);
   const config = getRoomConfig(room);
   const roomColor = theme[`room${room.charAt(0).toUpperCase() + room.slice(1)}` as keyof typeof theme] as string;
@@ -67,17 +67,13 @@ export function WeeklyRoomBadge({ room, interactive = true }: WeeklyRoomBadgePro
 
   const handlePress = () => {
     if (interactive) {
-      if (hapticsEnabled) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+      triggerHaptic("light");
       setShowSelector(true);
     }
   };
 
   const handleSelectRoom = (selectedRoom: WeeklyRoom) => {
-    if (hapticsEnabled) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    triggerHaptic("success");
     setWeeklyRoom(selectedRoom);
     setShowSelector(false);
   };

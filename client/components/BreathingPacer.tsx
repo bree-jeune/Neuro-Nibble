@@ -12,39 +12,31 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 
+import { triggerHaptic } from "@/lib/haptics";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { BorderRadius, Spacing } from "@/constants/theme";
-import { useAppStore } from "@/lib/store";
 
 const SHAPE_SIZE = 56;
 const BREATHE_DURATION = 4000;
 
 export function BreathingPacer() {
   const { theme } = useTheme();
-  const hapticsEnabled = useAppStore((s) => s.hapticsEnabled);
   const scale = useSharedValue(1);
   const opacity = useSharedValue(0.7);
   const isBreathing = useRef(false);
   const hapticInterval = useRef<NodeJS.Timeout | null>(null);
   const [isActive, setIsActive] = useState(false);
 
-  const triggerHaptic = () => {
-    if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-  };
-
   const startHapticLoop = () => {
     if (hapticInterval.current) {
       clearInterval(hapticInterval.current);
     }
-    triggerHaptic();
+    triggerHaptic("light");
     hapticInterval.current = setInterval(() => {
       if (isBreathing.current) {
-        triggerHaptic();
+        triggerHaptic("light");
       }
     }, BREATHE_DURATION * 2);
   };

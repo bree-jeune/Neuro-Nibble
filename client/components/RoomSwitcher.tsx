@@ -1,13 +1,13 @@
 import React from "react";
 import { View, StyleSheet, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
 } from "react-native-reanimated";
 
+import { triggerHaptic } from "@/lib/haptics";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { BorderRadius, Spacing } from "@/constants/theme";
@@ -36,14 +36,11 @@ export function RoomSwitcher() {
   const { theme } = useTheme();
   const weeklyRoom = useAppStore((s) => s.weeklyRoom);
   const setWeeklyRoom = useAppStore((s) => s.setWeeklyRoom);
-  const hapticsEnabled = useAppStore((s) => s.hapticsEnabled);
   
   const scale = useSharedValue(1);
 
   const handlePress = () => {
-    if (hapticsEnabled) {
-      Haptics.selectionAsync();
-    }
+    triggerHaptic("selection");
     
     scale.value = withSpring(0.9, { damping: 15, stiffness: 400 }, () => {
       scale.value = withSpring(1, { damping: 15, stiffness: 400 });

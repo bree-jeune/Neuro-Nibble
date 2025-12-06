@@ -11,7 +11,7 @@ import Animated, {
   Extrapolation,
 } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+import { triggerHaptic } from "@/lib/haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -38,12 +38,12 @@ export function SwipeableThoughtCard({
   const cardHeight = useSharedValue(72);
 
   const handleVent = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    triggerHaptic("heavy");
     onVent(thought.id);
   }, [onVent, thought.id]);
 
   const handleConvert = useCallback(() => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    triggerHaptic("success");
     onConvertToTask(thought);
   }, [onConvertToTask, thought]);
 

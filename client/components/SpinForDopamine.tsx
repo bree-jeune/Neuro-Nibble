@@ -12,7 +12,7 @@ import Animated, {
   FadeOut,
 } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+import { triggerHaptic } from "@/lib/haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -43,12 +43,12 @@ export function SpinForDopamine({ items }: SpinForDopamineProps) {
         setDisplayedItem(items[finalIndex]);
         setIsSpinning(false);
         resultOpacity.value = withTiming(1, { duration: 300 });
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        triggerHaptic("success");
         return;
       }
       
       setSpinIndex((prev) => (prev + 1) % items.length);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      triggerHaptic("light");
       
       let delay: number;
       const progress = count / maxSpins;
@@ -69,7 +69,7 @@ export function SpinForDopamine({ items }: SpinForDopamineProps) {
   const handleSpin = useCallback(() => {
     if (items.length === 0) return;
     
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    triggerHaptic("medium");
     setIsSpinning(true);
     setDisplayedItem(null);
     resultOpacity.value = 0;

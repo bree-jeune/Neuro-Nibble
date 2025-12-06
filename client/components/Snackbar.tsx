@@ -8,13 +8,12 @@ import Animated, {
   withTiming,
   runOnJS,
 } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
 
+import { triggerHaptic } from "@/lib/haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useSnackbarStore } from "@/lib/snackbarStore";
-import { useAppStore } from "@/lib/store";
 
 const springConfig = {
   damping: 20,
@@ -26,7 +25,6 @@ export function Snackbar() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { visible, message, undoAction, hide, undo } = useSnackbarStore();
-  const hapticsEnabled = useAppStore((s) => s.hapticsEnabled);
   
   const [shouldRender, setShouldRender] = useState(false);
   const translateY = useSharedValue(100);
@@ -53,9 +51,7 @@ export function Snackbar() {
   }));
 
   const handleUndo = () => {
-    if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    triggerHaptic("medium");
     undo();
   };
 

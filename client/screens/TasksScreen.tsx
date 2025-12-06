@@ -6,7 +6,7 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import * as Haptics from "expo-haptics";
+import { triggerHaptic } from "@/lib/haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { TaskCard } from "@/components/TaskCard";
@@ -48,7 +48,7 @@ export default function TasksScreen() {
     const taskSnapshot = JSON.parse(JSON.stringify(taskToDelete));
     const indexSnapshot = taskIndex;
     
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    triggerHaptic("success");
     deleteTask(taskId);
     
     showSnackbar("Task deleted", () => {
@@ -67,7 +67,7 @@ export default function TasksScreen() {
     const stepSnapshot = JSON.parse(JSON.stringify(step));
     const today = new Date().toISOString().split("T")[0];
     
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    triggerHaptic("light");
     toggleStepComplete(taskId, stepId);
     
     if (!wasCompleted) {
@@ -104,7 +104,7 @@ export default function TasksScreen() {
   const FilterButton = ({ type, label }: { type: FilterType; label: string }) => (
     <Pressable
       onPress={() => {
-        Haptics.selectionAsync();
+        triggerHaptic("selection");
         setFilter(type);
       }}
       style={[

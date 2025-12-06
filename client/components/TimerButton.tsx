@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { StyleSheet, Pressable, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -11,10 +10,10 @@ import Animated, {
   cancelAnimation,
 } from "react-native-reanimated";
 
+import { triggerHaptic } from "@/lib/haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { useAppStore } from "@/lib/store";
 
 interface TimerButtonProps {
   minutes: number;
@@ -28,7 +27,6 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function TimerButton({ minutes, stepText, isActive, onStart, onComplete }: TimerButtonProps) {
   const { theme } = useTheme();
-  const { hapticsEnabled } = useAppStore();
   const [isRunning, setIsRunning] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(minutes * 60);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -72,22 +70,16 @@ export function TimerButton({ minutes, stepText, isActive, onStart, onComplete }
 
   const handleComplete = () => {
     setIsRunning(false);
-    if (hapticsEnabled) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    triggerHaptic("success");
     onComplete?.();
   };
 
   const handlePress = () => {
     if (isRunning) {
-      if (hapticsEnabled) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+      triggerHaptic("light");
       setIsRunning(false);
     } else {
-      if (hapticsEnabled) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
+      triggerHaptic("medium");
       if (secondsLeft === 0) {
         setSecondsLeft(minutes * 60);
       }
@@ -97,9 +89,7 @@ export function TimerButton({ minutes, stepText, isActive, onStart, onComplete }
   };
 
   const handleReset = () => {
-    if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    triggerHaptic("light");
     setIsRunning(false);
     setSecondsLeft(minutes * 60);
   };

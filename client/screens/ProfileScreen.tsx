@@ -6,7 +6,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+
+import { triggerHaptic } from "@/lib/haptics";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { ThemedText } from "@/components/ThemedText";
@@ -58,12 +59,10 @@ export default function ProfileScreen() {
   const showStats = daysSinceFirstUse >= 3;
 
   const handleSaveName = useCallback(() => {
-    if (hapticsEnabled) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    triggerHaptic("success");
     setDisplayName(localName);
     showSnackbar("Name saved");
-  }, [localName, setDisplayName, hapticsEnabled, showSnackbar]);
+  }, [localName, setDisplayName, showSnackbar]);
 
   const completedSteps = tasks.reduce((acc, task) => {
     return acc + task.steps.filter(s => s.completed).length;
@@ -126,7 +125,7 @@ export default function ProfileScreen() {
 
   const handleHapticsToggle = useCallback((value: boolean) => {
     if (value) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      triggerHaptic("light");
     }
     setHapticsEnabled(value);
   }, [setHapticsEnabled]);
@@ -141,7 +140,7 @@ export default function ProfileScreen() {
           text: "Reset",
           style: "destructive",
           onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            triggerHaptic("warning");
             resetAllData();
             setShowSettingsModal(false);
           },
@@ -183,10 +182,13 @@ export default function ProfileScreen() {
         <AvatarPicker
           selectedIndex={avatarIndex}
           onSelect={(index) => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            triggerHaptic("light");
             setAvatarIndex(index);
           }}
         />
+        <ThemedText type="small" style={[styles.avatarHint, { color: theme.textSecondary }]}>
+          Tap to change your avatar
+        </ThemedText>
       </View>
 
       <View style={styles.nameSection}>
@@ -439,6 +441,10 @@ const styles = StyleSheet.create({
   avatarSection: {
     alignItems: "center",
     marginBottom: Spacing.lg,
+  },
+  avatarHint: {
+    marginTop: Spacing.sm,
+    fontStyle: "italic",
   },
   nameSection: {
     marginBottom: Spacing.xl,

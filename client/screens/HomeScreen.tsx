@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef, useLayoutEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef, useLayoutEffect, useMemo } from "react";
 import { View, ScrollView, StyleSheet, Pressable, Modal, TextInput, Animated, Easing } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -6,7 +6,8 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import * as Haptics from "expo-haptics";
+
+import { triggerHaptic } from "@/lib/haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -43,7 +44,6 @@ export default function HomeScreen() {
     setBookendCompleted,
     restoreBookendState,
     lastBookendDate,
-    hapticsEnabled,
     dopamineMenu,
     energyCheckInEnabled,
     displayName,
@@ -68,18 +68,18 @@ export default function HomeScreen() {
     .sort((a, b) => new Date(b.lastWorkedOn!).getTime() - new Date(a.lastWorkedOn!).getTime())
     .slice(0, 3);
 
-  const getBodyDoublingCount = useCallback(() => {
+  const getLiveUserCount = useCallback(() => {
     const now = new Date();
-    const hour = now.getHours();
-    const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
-    const seed = dayOfYear * 24 + hour;
-    const pseudoRandom = ((seed * 9301 + 49297) % 233280) / 233280;
-    const baseCount = hour >= 9 && hour <= 21 ? 47 : 12;
-    const variance = Math.floor(pseudoRandom * 15) - 7;
-    return Math.max(5, baseCount + variance);
+    const utcHour = now.getUTCHours();
+    const isBusinessHours = utcHour >= 8 && utcHour <= 22;
+    const baseCount = isBusinessHours ? 60 : 20;
+    const minCount = isBusinessHours ? 40 : 10;
+    const maxCount = isBusinessHours ? 80 : 30;
+    const variance = Math.floor(Math.random() * 7) - 3;
+    return Math.min(maxCount, Math.max(minCount, baseCount + variance));
   }, []);
   
-  const [bodyDoublingCount] = useState(getBodyDoublingCount);
+  const bodyDoublingCount = useMemo(() => getLiveUserCount(), [getLiveUserCount]);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -115,21 +115,17 @@ export default function HomeScreen() {
   }).length;
 
   const handleTaskPress = useCallback((task: Task) => {
-    if (hapticsEnabled) {
-      Haptics.selectionAsync();
-    }
+    triggerHaptic("selection");
     if (energyCheckInEnabled) {
       setSelectedTask(task);
       setShowEnergyCheck(true);
     } else {
       navigation.navigate("BreakItDown", { taskId: task.id });
     }
-  }, [hapticsEnabled, energyCheckInEnabled, navigation]);
+  }, [energyCheckInEnabled, navigation]);
 
   const handleEnergySelect = useCallback((level: EnergyLevel) => {
-    if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    triggerHaptic("light");
     setEnergyLevel(level);
     if (level === "low") {
       startAudio();
@@ -140,7 +136,7 @@ export default function HomeScreen() {
       navigation.navigate("BreakItDown", { taskId: selectedTask.id });
       setSelectedTask(null);
     }
-  }, [setEnergyLevel, hapticsEnabled, selectedTask, updateTask, navigation, startAudio]);
+  }, [setEnergyLevel, selectedTask, updateTask, navigation, startAudio]);
 
   const handleSkipEnergyCheck = useCallback(() => {
     if (selectedTask) {
@@ -151,19 +147,15 @@ export default function HomeScreen() {
   }, [selectedTask, navigation]);
 
   const handleBookend = useCallback(() => {
-    if (hapticsEnabled) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    triggerHaptic("success");
     setBookendCompleted(true);
-  }, [setBookendCompleted, hapticsEnabled]);
+  }, [setBookendCompleted]);
 
   const handleEndDay = () => {
     const prevCompleted = bookendCompleted;
     const prevLastDate = lastBookendDate;
     
-    if (hapticsEnabled) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    triggerHaptic("success");
     
     if (reflectionText.trim()) {
       addDailyReflection(reflectionText.trim());
@@ -690,14 +682,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: Spacing.sm,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: BorderRadius.sm,
     marginTop: Spacing.md,
   },
   bodyDoublingText: {
     fontSize: 13,
     fontWeight: "500",
+    textAlign: "center",
   },
   pulsingDot: {
     width: 8,

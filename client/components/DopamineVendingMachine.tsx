@@ -8,7 +8,7 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+import { triggerHaptic } from "@/lib/haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -130,7 +130,6 @@ export function DopamineVendingMachine({
   onRemoveItem,
 }: DopamineVendingMachineProps) {
   const { theme } = useTheme();
-  const hapticsEnabled = useAppStore((s) => s.hapticsEnabled);
   const [isSpinning, setIsSpinning] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [winner, setWinner] = useState<DopamineItem | null>(null);
@@ -144,9 +143,7 @@ export function DopamineVendingMachine({
   const handleSpin = useCallback(() => {
     if (items.length === 0) return;
 
-    if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    triggerHaptic("medium");
     setIsSpinning(true);
     setWinner(null);
 
@@ -169,16 +166,12 @@ export function DopamineVendingMachine({
         setIsSpinning(false);
         setWinner(items[finalIndex]);
         setTimeout(() => setShowModal(true), 300);
-        if (hapticsEnabled) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
+        triggerHaptic("success");
         return;
       }
 
       setHighlightedIndex(count % items.length);
-      if (hapticsEnabled) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+      triggerHaptic("light");
 
       let delay: number;
       const progress = count / maxSpins;
@@ -194,17 +187,15 @@ export function DopamineVendingMachine({
     };
 
     spinStep(0);
-  }, [items, buttonScale, buttonRotation, hapticsEnabled]);
+  }, [items, buttonScale, buttonRotation]);
 
   const handleAddItem = useCallback(() => {
     if (newItemText.trim()) {
-      if (hapticsEnabled) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+      triggerHaptic("light");
       onAddItem(newItemText.trim(), selectedCost);
       setNewItemText("");
     }
-  }, [newItemText, selectedCost, onAddItem, hapticsEnabled]);
+  }, [newItemText, selectedCost, onAddItem]);
 
   const handleCloseModal = useCallback(() => {
     setShowModal(false);
@@ -225,9 +216,7 @@ export function DopamineVendingMachine({
       isSpinning={isSpinning}
       isWinner={!isSpinning && winner?.id === item.id}
       onRemove={() => {
-        if (hapticsEnabled) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
+        triggerHaptic("light");
         onRemoveItem(item.id);
       }}
     />

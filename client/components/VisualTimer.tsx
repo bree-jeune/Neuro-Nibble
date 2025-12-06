@@ -2,17 +2,16 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, StyleSheet, Pressable, Modal } from "react-native";
 import Svg, { Circle, G } from "react-native-svg";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
 
+import { triggerHaptic } from "@/lib/haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { useAppStore } from "@/lib/store";
 
 interface VisualTimerProps {
   minutes: number;
@@ -34,7 +33,6 @@ export function VisualTimer({
   onRequestMoreTime,
 }: VisualTimerProps) {
   const { theme } = useTheme();
-  const { hapticsEnabled } = useAppStore();
   const [isRunning, setIsRunning] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(minutes * 60);
   const [totalSeconds, setTotalSeconds] = useState(minutes * 60);
@@ -65,8 +63,8 @@ export function VisualTimer({
           
           const newSeconds = prev - 1;
           
-          if (newSeconds > 0 && newSeconds % 60 === 0 && hapticsEnabled) {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          if (newSeconds > 0 && newSeconds % 60 === 0) {
+            triggerHaptic("light");
           }
           
           return newSeconds;
@@ -83,15 +81,13 @@ export function VisualTimer({
         clearInterval(intervalRef.current);
       }
     };
-  }, [isRunning, hapticsEnabled]);
+  }, [isRunning]);
 
   const handleTimerEnd = useCallback(() => {
     setIsRunning(false);
-    if (hapticsEnabled) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    triggerHaptic("success");
     setShowCheckInModal(true);
-  }, [hapticsEnabled]);
+  }, []);
 
   const handleFinished = useCallback(() => {
     setShowCheckInModal(false);
@@ -105,37 +101,29 @@ export function VisualTimer({
     setSecondsLeft(extraSeconds);
     setTotalSeconds(extraSeconds);
     setIsRunning(true);
-    if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    triggerHaptic("medium");
     onRequestMoreTime?.();
-  }, [hapticsEnabled, onRequestMoreTime]);
+  }, [onRequestMoreTime]);
 
   const handlePress = useCallback(() => {
     if (isRunning) {
-      if (hapticsEnabled) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+      triggerHaptic("light");
       setIsRunning(false);
     } else {
-      if (hapticsEnabled) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
+      triggerHaptic("medium");
       if (secondsLeft === 0) {
         setSecondsLeft(totalSeconds);
       }
       setIsRunning(true);
       onStart?.();
     }
-  }, [isRunning, hapticsEnabled, secondsLeft, totalSeconds, onStart]);
+  }, [isRunning, secondsLeft, totalSeconds, onStart]);
 
   const handleReset = useCallback(() => {
-    if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    triggerHaptic("light");
     setIsRunning(false);
     setSecondsLeft(totalSeconds);
-  }, [hapticsEnabled, totalSeconds]);
+  }, [totalSeconds]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
