@@ -18,7 +18,7 @@ export default function ReflectStackNavigator() {
         name="Reflect"
         component={ReflectScreen}
         options={{
-          headerTitle: "Reflect",
+          headerTitle: "Brain Dump",
         }}
       />
     </Stack.Navigator>

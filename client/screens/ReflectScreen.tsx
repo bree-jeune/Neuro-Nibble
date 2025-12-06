@@ -117,14 +117,15 @@ export default function ReflectScreen() {
           paddingTop: headerHeight + Spacing.lg,
           paddingBottom: tabBarHeight + Spacing.xl + 80,
           paddingHorizontal: Spacing.lg,
+          gap: 24,
         }}
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.section}>
-          <ThemedText type="h3" style={styles.sectionTitle}>
-            What kind of week is this?
+        <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+          <ThemedText type="h4" style={styles.cardTitle}>
+            How are you showing up?
           </ThemedText>
           <View style={styles.roomsGrid}>
             {rooms.map((room) => (
@@ -138,11 +139,11 @@ export default function ReflectScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <ThemedText type="h3" style={styles.sectionTitle}>
-            Thought Processor
+        <View style={[styles.card, styles.mainCard, { backgroundColor: theme.backgroundDefault }]}>
+          <ThemedText type="h3" style={styles.cardTitle}>
+            Brain Dump
           </ThemedText>
-          <ThemedText style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+          <ThemedText style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
             Swipe right to make it a task. Swipe left to let it go.
           </ThemedText>
           
@@ -164,7 +165,7 @@ export default function ReflectScreen() {
             </View>
           )}
 
-          <View style={[styles.inputBar, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+          <View style={[styles.inputBar, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
             <TextInput
               ref={inputRef}
               style={[styles.thoughtInput, { color: theme.text }]}
@@ -180,7 +181,7 @@ export default function ReflectScreen() {
               onPress={handleAddThought}
               style={[
                 styles.sendButton,
-                { backgroundColor: newThought.trim() ? theme.primary : theme.backgroundSecondary }
+                { backgroundColor: newThought.trim() ? theme.primary : theme.backgroundTertiary }
               ]}
               disabled={!newThought.trim()}
             >
@@ -193,11 +194,11 @@ export default function ReflectScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <ThemedText type="h3" style={styles.sectionTitle}>
-            Dopamine Vending Machine
+        <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+          <ThemedText type="h3" style={styles.cardTitle}>
+            Dopamine Menu
           </ThemedText>
-          <ThemedText style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+          <ThemedText style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
             Things YOUR brain actually likes (not shoulds).
           </ThemedText>
           <DopamineVendingMachine
@@ -207,18 +208,18 @@ export default function ReflectScreen() {
           />
         </View>
 
-        <View style={styles.section}>
-          <ThemedText type="h3" style={styles.sectionTitle}>
+        <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+          <ThemedText type="h4" style={styles.cardTitle}>
             One Tiny Thing
           </ThemedText>
-          <ThemedText style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+          <ThemedText style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
             What would make tomorrow just a little better?
           </ThemedText>
           <TextInput
             style={[
               styles.tinyThingInput,
               {
-                backgroundColor: theme.inputBackground,
+                backgroundColor: theme.backgroundSecondary,
                 color: theme.text,
                 borderColor: theme.border,
               },
@@ -257,18 +258,24 @@ export default function ReflectScreen() {
 }
 
 const styles = StyleSheet.create({
-  section: {
-    marginBottom: Spacing.xl,
+  card: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.xl,
   },
-  sectionTitle: {
+  mainCard: {
+    paddingVertical: Spacing.xl,
+  },
+  cardTitle: {
     marginBottom: Spacing.xs,
   },
-  sectionSubtitle: {
+  cardSubtitle: {
     fontStyle: "italic",
     marginBottom: Spacing.md,
+    fontSize: 14,
   },
   roomsGrid: {
     gap: Spacing.sm,
+    marginTop: Spacing.sm,
   },
   thoughtList: {
     marginBottom: Spacing.md,
@@ -311,13 +318,12 @@ const styles = StyleSheet.create({
   tinyThingInput: {
     height: 48,
     padding: Spacing.md,
-    borderRadius: BorderRadius.xs,
+    borderRadius: BorderRadius.sm,
     borderWidth: 1,
     fontSize: 16,
     letterSpacing: 0.5,
   },
   permissionContainer: {
-    marginTop: Spacing.lg,
     alignItems: "center",
   },
   permissionText: {

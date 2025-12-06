@@ -64,11 +64,12 @@ To test on a physical device, scan the QR code from Replit's URL bar menu using 
 - Break tasks into micro-steps (2-10 minutes each)
 - Edit existing tasks
 
-### Reflect Screen
-- Weekly rooms selection (Gentle Week, Focus Week, Adventure Week, Rest Week)
-- Brain dump for capturing thoughts
-- Dopamine menu for listing enjoyable activities
-- One tiny thing for the day's smallest win
+### Reflect Screen (Header: "Brain Dump")
+- Card-based layout with 24px spacing between sections
+- "How are you showing up?" - Weekly room selector (compact card)
+- "Brain Dump" - Main focus area for capturing and processing thoughts (swipe to convert to task or release)
+- "Dopamine Menu" - Vending machine for listing enjoyable activities with cost categories
+- "One Tiny Thing" - Tomorrow's smallest win
 
 ### Profile Screen
 - Avatar picker
