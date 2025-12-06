@@ -102,7 +102,13 @@ export const useAppStore = create<AppStore>()(
                     ...t,
                     lastWorkedOn: new Date().toISOString(),
                     steps: t.steps.map((s) =>
-                      s.id === stepId ? { ...s, completed: !s.completed } : s
+                      s.id === stepId
+                        ? {
+                            ...s,
+                            completed: !s.completed,
+                            completedAt: !s.completed ? new Date().toISOString() : undefined,
+                          }
+                        : s
                     ),
                   }
                 : t
@@ -173,6 +179,19 @@ export const useAppStore = create<AppStore>()(
           if (state.lastBookendDate !== today) {
             state.bookendCompleted = false;
           }
+          
+          state.tasks = state.tasks.map((task) => ({
+            ...task,
+            steps: task.steps.map((step) => {
+              if (step.completed && !step.completedAt) {
+                return {
+                  ...step,
+                  completedAt: task.lastWorkedOn || task.createdAt || new Date().toISOString(),
+                };
+              }
+              return step;
+            }),
+          }));
         }
       },
     }

@@ -7,6 +7,16 @@ export interface Step {
   text: string;
   minutes: number;
   completed: boolean;
+  completedAt?: string;
+}
+
+export interface HistoryEntry {
+  date: string;
+  bites: {
+    taskTitle: string;
+    biteText: string;
+    minutes: number;
+  }[];
 }
 
 export interface Task {

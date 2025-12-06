@@ -58,6 +58,42 @@ export default function ProfileScreen() {
 
   const daysActiveThisWeek = weeklyActivity.filter((d) => d.active).length;
 
+  const recentHistory = useMemo(() => {
+    const historyMap = new Map<string, { taskTitle: string; biteText: string; minutes: number }[]>();
+    
+    tasks.forEach((task) => {
+      task.steps.forEach((step) => {
+        if (step.completed && step.completedAt) {
+          const dateStr = step.completedAt.split("T")[0];
+          const entry = {
+            taskTitle: task.title,
+            biteText: step.text,
+            minutes: step.minutes,
+          };
+          if (historyMap.has(dateStr)) {
+            historyMap.get(dateStr)!.push(entry);
+          } else {
+            historyMap.set(dateStr, [entry]);
+          }
+        }
+      });
+    });
+    
+    const sortedDates = Array.from(historyMap.keys()).sort((a, b) => b.localeCompare(a));
+    const last7Days = sortedDates.slice(0, 7);
+    
+    return last7Days.map((date) => ({
+      date,
+      displayDate: new Date(date + "T00:00:00").toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }),
+      bites: historyMap.get(date)!,
+      totalMinutes: historyMap.get(date)!.reduce((sum, b) => sum + b.minutes, 0),
+    }));
+  }, [tasks]);
+
   const handleHapticsToggle = useCallback((value: boolean) => {
     if (value) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -177,6 +213,54 @@ export default function ProfileScreen() {
             </ThemedText>
           </View>
         </View>
+      </View>
+
+      <View style={styles.historySection}>
+        <ThemedText type="h3" style={styles.sectionTitle}>
+          Recent Activity
+        </ThemedText>
+        {recentHistory.length === 0 ? (
+          <View style={[styles.emptyHistory, { backgroundColor: theme.backgroundDefault }]}>
+            <Feather name="clock" size={24} color={theme.textSecondary} />
+            <ThemedText style={[styles.emptyHistoryText, { color: theme.textSecondary }]}>
+              Your completed bites will appear here
+            </ThemedText>
+          </View>
+        ) : (
+          recentHistory.map((day) => (
+            <View key={day.date} style={styles.historyDay}>
+              <View style={styles.historyDayHeader}>
+                <ThemedText type="small" style={{ color: theme.primary, fontWeight: "600" }}>
+                  {day.displayDate}
+                </ThemedText>
+                <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                  {day.totalMinutes} min
+                </ThemedText>
+              </View>
+              {day.bites.map((bite, idx) => (
+                <View
+                  key={`${day.date}-${idx}`}
+                  style={[styles.historyBite, { backgroundColor: theme.backgroundDefault }]}
+                >
+                  <View style={styles.historyBiteContent}>
+                    <Feather name="check-circle" size={14} color={theme.success} />
+                    <View style={styles.historyBiteText}>
+                      <ThemedText numberOfLines={1} style={{ fontSize: 14 }}>
+                        {bite.biteText}
+                      </ThemedText>
+                      <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                        {bite.taskTitle}
+                      </ThemedText>
+                    </View>
+                  </View>
+                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                    {bite.minutes}m
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          ))
+        )}
       </View>
 
       <View style={styles.settingsSection}>
@@ -309,6 +393,45 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
     fontSize: 11,
     textAlign: "center",
+  },
+  historySection: {
+    marginBottom: Spacing.xl,
+  },
+  emptyHistory: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  emptyHistoryText: {
+    fontSize: 14,
+    textAlign: "center",
+  },
+  historyDay: {
+    marginBottom: Spacing.md,
+  },
+  historyDayHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.xs,
+  },
+  historyBite: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.xs,
+    marginBottom: Spacing.xs,
+  },
+  historyBiteContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    flex: 1,
+  },
+  historyBiteText: {
+    flex: 1,
   },
   settingsSection: {
     marginBottom: Spacing.xl,
