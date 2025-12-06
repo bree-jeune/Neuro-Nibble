@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { AppState, Task, EnergyLevel, WeeklyRoom, Step, DailyReflection } from "@/lib/types";
+import type { AppState, Task, EnergyLevel, WeeklyRoom, Step, DailyReflection, ThoughtItem } from "@/lib/types";
 
 interface AppStore extends AppState {
   setEnergyLevel: (level: EnergyLevel) => void;
@@ -14,6 +14,9 @@ interface AppStore extends AppState {
   toggleStepComplete: (taskId: string, stepId: string) => void;
   restoreStep: (taskId: string, step: Step, removeDayFromActive: string | null) => void;
   setBrainDump: (text: string) => void;
+  addThought: (text: string) => void;
+  removeThought: (id: string) => void;
+  convertThoughtToTask: (thought: ThoughtItem) => void;
   addDopamineItem: (item: string) => void;
   removeDopamineItem: (item: string) => void;
   setOneTinyThing: (text: string) => void;
@@ -35,6 +38,7 @@ const initialState: AppState = {
   weeklyRoom: "gentle",
   tasks: [],
   brainDump: "",
+  thoughtDump: [],
   dopamineMenu: [],
   oneTinyThing: "",
   displayName: "",
@@ -190,6 +194,35 @@ export const useAppStore = create<AppStore>()(
       },
       
       setBrainDump: (text) => set({ brainDump: text }),
+      
+      addThought: (text) => {
+        const newThought: ThoughtItem = {
+          id: Date.now().toString(),
+          text,
+          createdAt: new Date().toISOString(),
+        };
+        set((state) => ({ thoughtDump: [...state.thoughtDump, newThought] }));
+      },
+      
+      removeThought: (id) => {
+        set((state) => ({
+          thoughtDump: state.thoughtDump.filter((t) => t.id !== id),
+        }));
+      },
+      
+      convertThoughtToTask: (thought) => {
+        const newTask: Task = {
+          id: Date.now().toString(),
+          title: thought.text,
+          steps: [],
+          energyLevel: "medium",
+          createdAt: new Date().toISOString(),
+        };
+        set((state) => ({
+          tasks: [newTask, ...state.tasks],
+          thoughtDump: state.thoughtDump.filter((t) => t.id !== thought.id),
+        }));
+      },
       
       addDopamineItem: (item) => {
         set((state) => ({

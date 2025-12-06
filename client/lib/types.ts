@@ -39,11 +39,18 @@ export interface DailyReflection {
   text: string;
 }
 
+export interface ThoughtItem {
+  id: string;
+  text: string;
+  createdAt: string;
+}
+
 export interface AppState {
   energyLevel: EnergyLevel;
   weeklyRoom: WeeklyRoom;
   tasks: Task[];
   brainDump: string;
+  thoughtDump: ThoughtItem[];
   dopamineMenu: string[];
   oneTinyThing: string;
   displayName: string;
