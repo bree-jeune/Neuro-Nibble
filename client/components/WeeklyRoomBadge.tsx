@@ -51,10 +51,19 @@ export const getRoomConfig = (room: WeeklyRoom) => {
 
 export function WeeklyRoomBadge({ room, interactive = true }: WeeklyRoomBadgeProps) {
   const { theme } = useTheme();
-  const { setWeeklyRoom, hapticsEnabled } = useAppStore();
+  const { setWeeklyRoom, hapticsEnabled, firstUseDate } = useAppStore();
   const [showSelector, setShowSelector] = useState(false);
   const config = getRoomConfig(room);
   const roomColor = theme[`room${room.charAt(0).toUpperCase() + room.slice(1)}` as keyof typeof theme] as string;
+
+  const daysSinceFirstUse = firstUseDate
+    ? Math.floor((Date.now() - new Date(firstUseDate).getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+  const showWeeklyRoom = daysSinceFirstUse >= 2;
+
+  if (!showWeeklyRoom) {
+    return null;
+  }
 
   const handlePress = () => {
     if (interactive) {

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { View, StyleSheet, TextInput, Pressable, FlatList } from "react-native";
+import { View, StyleSheet, TextInput, Pressable, FlatList, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight, HeaderButton } from "@react-navigation/elements";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -19,7 +19,7 @@ import { useSnackbarStore } from "@/lib/snackbarStore";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 import type { EnergyLevel, Step } from "@/lib/types";
 
-type ViewMode = "edit" | "work";
+type ViewMode = "minimal" | "edit" | "work";
 
 export default function BreakItDownScreen() {
   const insets = useSafeAreaInsets();
@@ -35,22 +35,32 @@ export default function BreakItDownScreen() {
     ? tasks.find(t => t.id === route.params?.taskId)
     : undefined;
 
-  const [viewMode, setViewMode] = useState<ViewMode>(existingTask ? "work" : "edit");
+  const [viewMode, setViewMode] = useState<ViewMode>(existingTask ? "work" : "minimal");
   const [title, setTitle] = useState(existingTask?.title || "");
   const [steps, setSteps] = useState<Step[]>(existingTask?.steps || []);
   const [energyLevel, setEnergyLevel] = useState<EnergyLevel>(existingTask?.energyLevel || "medium");
+  const [firstStepText, setFirstStepText] = useState("");
   const [newStepText, setNewStepText] = useState("");
   const [newStepMinutes, setNewStepMinutes] = useState(5);
   const [activeTimer, setActiveTimer] = useState<string | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
 
   const canSave = title.trim().length > 0;
+  const canStartMinimal = title.trim().length > 0 && firstStepText.trim().length > 0;
   const totalMinutes = steps.reduce((acc, s) => acc + s.minutes, 0);
   const completedSteps = steps.filter(s => s.completed).length;
   const nextIncompleteStep = steps.find(s => !s.completed);
 
   useEffect(() => {
+    const headerTitle = viewMode === "minimal" 
+      ? "Break It Down" 
+      : viewMode === "edit" 
+        ? "Edit Bites" 
+        : title || "Your Bites";
+    
     navigation.setOptions({
-      headerTitle: viewMode === "edit" ? "Break It Down" : title || "Your Bites",
+      headerTitle,
       headerLeft: () => (
         <HeaderButton onPress={() => navigation.goBack()}>
           <ThemedText style={{ color: theme.primary }}>
@@ -64,16 +74,42 @@ export default function BreakItDownScreen() {
           disabled={!canSave}
         >
           <ThemedText style={{ color: canSave ? theme.primary : theme.textSecondary }}>
-            {steps.length > 0 ? "Start" : "Save"}
+            Save
           </ThemedText>
         </HeaderButton>
-      ) : () => (
+      ) : viewMode === "work" ? () => (
         <HeaderButton onPress={() => setViewMode("edit")}>
           <Feather name="edit-2" size={20} color={theme.primary} />
         </HeaderButton>
-      ),
+      ) : undefined,
     });
   }, [navigation, theme, canSave, title, steps, energyLevel, viewMode]);
+
+  const handleStartMinimal = useCallback(() => {
+    if (!canStartMinimal) return;
+    
+    if (hapticsEnabled) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    
+    const newStep: Step = {
+      id: Date.now().toString(),
+      text: firstStepText.trim(),
+      minutes: 5,
+      completed: false,
+    };
+    
+    const newSteps = [newStep];
+    setSteps(newSteps);
+    
+    addTask({
+      title: title.trim(),
+      steps: newSteps,
+      energyLevel: "medium",
+    });
+    
+    setViewMode("work");
+  }, [canStartMinimal, title, firstStepText, addTask, hapticsEnabled]);
 
   const handleSave = useCallback(() => {
     if (!canSave) return;
@@ -97,12 +133,8 @@ export default function BreakItDownScreen() {
       });
     }
     
-    if (steps.length > 0) {
-      setViewMode("work");
-    } else {
-      navigation.goBack();
-    }
-  }, [canSave, existingTask, title, steps, energyLevel, addTask, updateTask, navigation, hapticsEnabled]);
+    setViewMode("work");
+  }, [canSave, existingTask, title, steps, energyLevel, addTask, updateTask, hapticsEnabled]);
 
   const handleAddStep = useCallback(() => {
     if (newStepText.trim()) {
@@ -172,9 +204,9 @@ export default function BreakItDownScreen() {
 
   const activeDays = useAppStore((s) => s.activeDays);
 
-  const handleToggleStep = useCallback((stepId: string) => {
+  const handleToggleStep = useCallback((stepId: string, skipCelebration = false) => {
     if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     const step = steps.find(s => s.id === stepId);
     if (!step) return;
@@ -195,38 +227,49 @@ export default function BreakItDownScreen() {
     ));
     setActiveTimer(null);
     
-    if (!wasCompleted) {
-      showSnackbar("Bite complete", () => {
-        if (existingTask) {
-          restoreStep(existingTask.id, stepSnapshot, today);
-        }
-        setSteps(prev => prev.map(s => 
-          s.id === stepId ? stepSnapshot : s
-        ));
-      });
+    if (!wasCompleted && !skipCelebration) {
+      setShowCelebration(true);
     }
-  }, [existingTask, toggleStepComplete, restoreStep, hapticsEnabled, steps, activeDays, showSnackbar]);
+  }, [existingTask, toggleStepComplete, hapticsEnabled, steps]);
+
+  const handleCelebrationChoice = useCallback((keepGoing: boolean) => {
+    setShowCelebration(false);
+    if (!keepGoing) {
+      navigation.goBack();
+    }
+  }, [navigation]);
 
   if (viewMode === "work") {
+    const incompleteSteps = steps.filter(s => !s.completed);
+    
     return (
       <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-        <View style={[styles.workHeader, { paddingTop: headerHeight + Spacing.xl }]}>
-          <View style={styles.progressContainer}>
-            <View style={[styles.progressBar, { backgroundColor: theme.backgroundDefault }]}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { 
-                    backgroundColor: theme.primary,
-                    width: steps.length > 0 ? `${(completedSteps / steps.length) * 100}%` : "0%",
-                  }
-                ]} 
-              />
-            </View>
-            <ThemedText style={[styles.progressText, { color: theme.textSecondary }]}>
-              {completedSteps} of {steps.length} bites complete
+        <View style={[styles.workHeader, { paddingTop: headerHeight + Spacing.md }]}>
+          <View style={[styles.permissionBanner, { backgroundColor: theme.primary + "15" }]}>
+            <Feather name="heart" size={16} color={theme.primary} />
+            <ThemedText style={[styles.permissionBannerText, { color: theme.primary }]}>
+              You can stop after any bite. Progress is valid.
             </ThemedText>
           </View>
+          
+          {completedSteps > 0 ? (
+            <View style={styles.progressContainer}>
+              <View style={[styles.progressBar, { backgroundColor: theme.backgroundDefault }]}>
+                <View 
+                  style={[
+                    styles.progressFill, 
+                    { 
+                      backgroundColor: theme.primary,
+                      width: `${(completedSteps / steps.length) * 100}%`,
+                    }
+                  ]} 
+                />
+              </View>
+              <ThemedText style={[styles.progressText, { color: theme.textSecondary }]}>
+                {completedSteps} {completedSteps === 1 ? "bite" : "bites"} done today
+              </ThemedText>
+            </View>
+          ) : null}
         </View>
 
         {nextIncompleteStep ? (
@@ -249,10 +292,12 @@ export default function BreakItDownScreen() {
               </View>
               <Pressable
                 onPress={() => handleToggleStep(nextIncompleteStep.id)}
-                style={[styles.markDoneButton, { borderColor: theme.primary }]}
+                style={[styles.markDoneButton, { backgroundColor: theme.primary }]}
               >
-                <Feather name="check" size={20} color={theme.primary} />
-                <ThemedText style={{ color: theme.primary }}>Mark done</ThemedText>
+                <Feather name="check" size={20} color="#FFFFFF" />
+                <ThemedText style={{ color: "#FFFFFF", fontWeight: "600" }}>
+                  Mark Done
+                </ThemedText>
               </Pressable>
             </View>
           </View>
@@ -268,32 +313,189 @@ export default function BreakItDownScreen() {
           </View>
         )}
 
-        <View style={styles.upcomingContainer}>
-          <ThemedText style={[styles.upcomingLabel, { color: theme.textSecondary }]}>
-            {completedSteps > 0 ? "Remaining bites" : "All your bites"}
-          </ThemedText>
-          <FlatList
-            data={steps}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item, index }) => (
-              <StepItem
-                step={item}
-                index={index}
-                onToggle={() => handleToggleStep(item.id)}
-                compact
+        {incompleteSteps.length > 1 && nextIncompleteStep ? (
+          <View style={styles.upcomingContainer}>
+            <Pressable 
+              onPress={() => setShowMoreOptions(!showMoreOptions)}
+              style={styles.upcomingHeader}
+            >
+              <ThemedText style={[styles.upcomingLabel, { color: theme.textSecondary }]}>
+                {incompleteSteps.length - 1} more {incompleteSteps.length - 1 === 1 ? "bite" : "bites"} after this
+              </ThemedText>
+              <Feather 
+                name={showMoreOptions ? "chevron-up" : "chevron-down"} 
+                size={18} 
+                color={theme.textSecondary} 
               />
-            )}
-            contentContainerStyle={{ gap: Spacing.sm, paddingBottom: insets.bottom + Spacing.xl }}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
+            </Pressable>
+            {showMoreOptions ? (
+              <FlatList
+                data={incompleteSteps.slice(1)}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item, index }) => (
+                  <StepItem
+                    step={item}
+                    index={index + 1}
+                    onToggle={() => handleToggleStep(item.id, true)}
+                    compact
+                  />
+                )}
+                contentContainerStyle={{ gap: Spacing.sm, paddingTop: Spacing.sm }}
+                showsVerticalScrollIndicator={false}
+              />
+            ) : null}
+          </View>
+        ) : null}
+        
+        {completedSteps > 0 && completedSteps < steps.length ? (
+          <View style={[styles.stopOption, { paddingBottom: insets.bottom + Spacing.lg }]}>
+            <Pressable 
+              onPress={() => navigation.goBack()}
+              style={[styles.stopButton, { borderColor: theme.border }]}
+            >
+              <ThemedText style={{ color: theme.textSecondary }}>
+                Stop here for now
+              </ThemedText>
+            </Pressable>
+            <ThemedText style={[styles.stopHint, { color: theme.textSecondary }]}>
+              This still counts as progress
+            </ThemedText>
+          </View>
+        ) : null}
 
-        <View style={[styles.workFooter, { paddingBottom: insets.bottom + Spacing.lg }]}>
-          <ThemedText style={[styles.permissionText, { color: theme.textSecondary }]}>
-            You can stop after this bite. That still counts.
-          </ThemedText>
-        </View>
+        <Modal
+          visible={showCelebration}
+          transparent
+          animationType="fade"
+          onRequestClose={() => handleCelebrationChoice(true)}
+        >
+          <View style={styles.celebrationOverlay}>
+            <View style={[styles.celebrationCard, { backgroundColor: theme.backgroundDefault }]}>
+              <View style={[styles.celebrationIcon, { backgroundColor: theme.success + "20" }]}>
+                <Feather name="star" size={32} color={theme.success} />
+              </View>
+              <ThemedText type="h2" style={styles.celebrationTitle}>
+                You did a thing!
+              </ThemedText>
+              <ThemedText style={[styles.celebrationSubtitle, { color: theme.textSecondary }]}>
+                That counts. You're allowed to stop now.
+              </ThemedText>
+              <View style={styles.celebrationActions}>
+                <Pressable 
+                  onPress={() => handleCelebrationChoice(true)}
+                  style={[styles.keepGoingButton, { backgroundColor: theme.primary }]}
+                >
+                  <ThemedText style={{ color: "#FFFFFF", fontWeight: "600" }}>
+                    Keep Going
+                  </ThemedText>
+                </Pressable>
+                <Pressable 
+                  onPress={() => handleCelebrationChoice(false)}
+                  style={[styles.stopHereButton, { borderColor: theme.border }]}
+                >
+                  <ThemedText style={{ color: theme.text }}>
+                    Stop Here
+                  </ThemedText>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
+    );
+  }
+
+  if (viewMode === "minimal") {
+    return (
+      <KeyboardAwareScrollViewCompat
+        style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
+        contentContainerStyle={{
+          paddingTop: headerHeight + Spacing.xl,
+          paddingBottom: insets.bottom + Spacing.xl,
+          paddingHorizontal: Spacing.lg,
+          flexGrow: 1,
+        }}
+        scrollIndicatorInsets={{ bottom: insets.bottom }}
+      >
+        <View style={styles.minimalContent}>
+          <View style={styles.section}>
+            <ThemedText type="h3" style={styles.sectionTitle}>
+              What's freezing you?
+            </ThemedText>
+            <TextInput
+              style={[
+                styles.titleInput,
+                {
+                  backgroundColor: theme.inputBackground,
+                  color: theme.text,
+                  borderColor: theme.border,
+                },
+              ]}
+              placeholder="e.g., grocery shopping"
+              placeholderTextColor={theme.textSecondary}
+              value={title}
+              onChangeText={setTitle}
+              autoFocus
+            />
+          </View>
+
+          <View style={styles.section}>
+            <ThemedText type="h3" style={styles.sectionTitle}>
+              What's the tiniest first bite?
+            </ThemedText>
+            <TextInput
+              style={[
+                styles.titleInput,
+                {
+                  backgroundColor: theme.inputBackground,
+                  color: theme.text,
+                  borderColor: theme.border,
+                },
+              ]}
+              placeholder="e.g., make a list"
+              placeholderTextColor={theme.textSecondary}
+              value={firstStepText}
+              onChangeText={setFirstStepText}
+            />
+          </View>
+
+          <View style={styles.minimalFooter}>
+            <Pressable
+              onPress={handleStartMinimal}
+              disabled={!canStartMinimal}
+              style={[
+                styles.startButton,
+                { 
+                  backgroundColor: canStartMinimal ? theme.primary : theme.backgroundDefault,
+                },
+              ]}
+            >
+              <ThemedText 
+                style={{ 
+                  color: canStartMinimal ? "#FFFFFF" : theme.textSecondary,
+                  fontWeight: "600",
+                  fontSize: 16,
+                }}
+              >
+                Start This Bite
+              </ThemedText>
+            </Pressable>
+            
+            <ThemedText style={[styles.minimalHint, { color: theme.textSecondary }]}>
+              You can add more bites after. Just start with one.
+            </ThemedText>
+            
+            <Pressable 
+              onPress={() => setViewMode("edit")}
+              style={styles.advancedLink}
+            >
+              <ThemedText style={{ color: theme.primary, fontSize: 14 }}>
+                I want to plan more bites first
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAwareScrollViewCompat>
     );
   }
 
@@ -740,16 +942,125 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   upcomingContainer: {
-    flex: 1,
     paddingHorizontal: Spacing.lg,
     marginTop: Spacing.lg,
   },
+  upcomingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.sm,
+  },
   upcomingLabel: {
     fontSize: 14,
-    marginBottom: Spacing.sm,
   },
   workFooter: {
     paddingHorizontal: Spacing.lg,
     alignItems: "center",
+  },
+  minimalContent: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  minimalFooter: {
+    alignItems: "center",
+    gap: Spacing.md,
+    marginTop: "auto",
+    paddingTop: Spacing.xl,
+  },
+  startButton: {
+    width: "100%",
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: BorderRadius.sm,
+  },
+  minimalHint: {
+    fontSize: 14,
+    fontStyle: "italic",
+    textAlign: "center",
+  },
+  advancedLink: {
+    paddingVertical: Spacing.md,
+  },
+  permissionBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    marginBottom: Spacing.lg,
+  },
+  permissionBannerText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  stopOption: {
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+  },
+  stopButton: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  stopHint: {
+    fontSize: 13,
+    fontStyle: "italic",
+  },
+  celebrationOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.lg,
+  },
+  celebrationCard: {
+    width: "100%",
+    maxWidth: 320,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xl,
+    alignItems: "center",
+  },
+  celebrationIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.lg,
+  },
+  celebrationTitle: {
+    marginBottom: Spacing.sm,
+    textAlign: "center",
+  },
+  celebrationSubtitle: {
+    fontSize: 15,
+    textAlign: "center",
+    marginBottom: Spacing.xl,
+  },
+  celebrationActions: {
+    width: "100%",
+    gap: Spacing.md,
+  },
+  keepGoingButton: {
+    width: "100%",
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: BorderRadius.sm,
+  },
+  stopHereButton: {
+    width: "100%",
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
   },
 });

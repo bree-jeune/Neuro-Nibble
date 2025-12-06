@@ -48,4 +48,5 @@ export interface AppState {
   lastBookendDate: string;
   activeDays: string[];
   onboardingCompleted: boolean;
+  firstUseDate: string;
 }

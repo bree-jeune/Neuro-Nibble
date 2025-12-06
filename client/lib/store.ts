@@ -44,6 +44,7 @@ const initialState: AppState = {
   lastBookendDate: "",
   activeDays: [],
   onboardingCompleted: false,
+  firstUseDate: "",
 };
 
 export const useAppStore = create<AppStore>()(
@@ -240,6 +241,10 @@ export const useAppStore = create<AppStore>()(
           const today = new Date().toISOString().split("T")[0];
           if (state.lastBookendDate !== today) {
             state.bookendCompleted = false;
+          }
+          
+          if (!state.firstUseDate) {
+            state.firstUseDate = new Date().toISOString();
           }
           
           state.tasks = state.tasks.map((task) => ({

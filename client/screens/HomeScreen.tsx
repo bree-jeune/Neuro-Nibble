@@ -15,11 +15,10 @@ import { EnergyCard } from "@/components/EnergyCard";
 import { WeeklyRoomBadge } from "@/components/WeeklyRoomBadge";
 import { RecentTaskCard } from "@/components/RecentTaskCard";
 import { DailyBookend } from "@/components/DailyBookend";
-import { ContextualBanner } from "@/components/ContextualBanner";
 import { useAppStore } from "@/lib/store";
 import { useSnackbarStore } from "@/lib/snackbarStore";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
-import type { EnergyLevel } from "@/lib/types";
+import type { EnergyLevel, Task } from "@/lib/types";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -28,18 +27,22 @@ export default function HomeScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [showEndDayModal, setShowEndDayModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [showEnergyCheck, setShowEnergyCheck] = useState(false);
 
   const { 
     energyLevel, 
     setEnergyLevel, 
     weeklyRoom, 
-    tasks, 
+    tasks,
+    updateTask,
     bookendCompleted,
     setBookendCompleted,
     restoreBookendState,
     lastBookendDate,
     hapticsEnabled,
     dopamineMenu,
+    energyCheckInEnabled,
   } = useAppStore();
   const showSnackbar = useSnackbarStore((s) => s.show);
 
@@ -53,12 +56,38 @@ export default function HomeScreen() {
     return t.lastWorkedOn?.startsWith(today);
   }).length;
 
+  const handleTaskPress = useCallback((task: Task) => {
+    if (hapticsEnabled) {
+      Haptics.selectionAsync();
+    }
+    if (energyCheckInEnabled) {
+      setSelectedTask(task);
+      setShowEnergyCheck(true);
+    } else {
+      navigation.navigate("BreakItDown", { taskId: task.id });
+    }
+  }, [hapticsEnabled, energyCheckInEnabled, navigation]);
+
   const handleEnergySelect = useCallback((level: EnergyLevel) => {
     if (hapticsEnabled) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     setEnergyLevel(level);
-  }, [setEnergyLevel, hapticsEnabled]);
+    if (selectedTask) {
+      updateTask(selectedTask.id, { energyLevel: level });
+      setShowEnergyCheck(false);
+      navigation.navigate("BreakItDown", { taskId: selectedTask.id });
+      setSelectedTask(null);
+    }
+  }, [setEnergyLevel, hapticsEnabled, selectedTask, updateTask, navigation]);
+
+  const handleSkipEnergyCheck = useCallback(() => {
+    if (selectedTask) {
+      setShowEnergyCheck(false);
+      navigation.navigate("BreakItDown", { taskId: selectedTask.id });
+      setSelectedTask(null);
+    }
+  }, [selectedTask, navigation]);
 
   const handleBookend = useCallback(() => {
     if (hapticsEnabled) {
@@ -113,35 +142,9 @@ export default function HomeScreen() {
           <ThemedText type="h2" style={styles.greeting}>
             {getDayName()}
           </ThemedText>
-          <ThemedText style={[styles.subGreeting, { color: theme.textSecondary }]}>
-            How's your energy today?
-          </ThemedText>
-        </View>
-
-        <View style={styles.energyContainer}>
-          <EnergyCard
-            level="low"
-            selected={energyLevel === "low"}
-            onPress={() => handleEnergySelect("low")}
-          />
-          <EnergyCard
-            level="medium"
-            selected={energyLevel === "medium"}
-            onPress={() => handleEnergySelect("medium")}
-          />
-          <EnergyCard
-            level="high"
-            selected={energyLevel === "high"}
-            onPress={() => handleEnergySelect("high")}
-          />
         </View>
 
         <WeeklyRoomBadge room={weeklyRoom} />
-
-        <ContextualBanner 
-          energyLevel={energyLevel} 
-          weeklyRoom={weeklyRoom} 
-        />
 
         {tasks.length === 0 ? (
           <View style={[styles.emptyStateCard, { backgroundColor: theme.backgroundDefault }]}>
@@ -171,7 +174,7 @@ export default function HomeScreen() {
               <RecentTaskCard
                 key={task.id}
                 task={task}
-                onPress={() => navigation.navigate("BreakItDown", { taskId: task.id })}
+                onPress={() => handleTaskPress(task)}
               />
             ))}
           </View>
@@ -257,6 +260,81 @@ export default function HomeScreen() {
               style={styles.cancelButton}
             >
               <ThemedText style={{ color: theme.textSecondary }}>Not yet</ThemedText>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={showEnergyCheck}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEnergyCheck(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setShowEnergyCheck(false)}
+        >
+          <View 
+            style={[styles.energyCheckContent, { backgroundColor: theme.backgroundRoot }]}
+            onStartShouldSetResponder={() => true}
+          >
+            <ThemedText type="h3" style={styles.energyCheckTitle}>
+              How's your energy for this?
+            </ThemedText>
+            
+            {selectedTask ? (
+              <View style={[styles.selectedTaskCard, { backgroundColor: theme.backgroundDefault }]}>
+                <ThemedText style={styles.selectedTaskName}>{selectedTask.title}</ThemedText>
+              </View>
+            ) : null}
+            
+            <ThemedText style={[styles.energyCheckHint, { color: theme.textSecondary }]}>
+              This helps show the right first bite for you
+            </ThemedText>
+
+            <View style={styles.energyOptions}>
+              <Pressable
+                onPress={() => handleEnergySelect("low")}
+                style={[styles.energyOption, { backgroundColor: theme.roomGentle }]}
+              >
+                <Feather name="cloud" size={24} color={theme.text} />
+                <ThemedText style={styles.energyOptionLabel}>Low</ThemedText>
+                <ThemedText style={[styles.energyOptionHint, { color: theme.textSecondary }]}>
+                  Smallest bites
+                </ThemedText>
+              </Pressable>
+              
+              <Pressable
+                onPress={() => handleEnergySelect("medium")}
+                style={[styles.energyOption, { backgroundColor: theme.roomBuild }]}
+              >
+                <Feather name="sun" size={24} color={theme.text} />
+                <ThemedText style={styles.energyOptionLabel}>Medium</ThemedText>
+                <ThemedText style={[styles.energyOptionHint, { color: theme.textSecondary }]}>
+                  Standard pace
+                </ThemedText>
+              </Pressable>
+              
+              <Pressable
+                onPress={() => handleEnergySelect("high")}
+                style={[styles.energyOption, { backgroundColor: theme.roomRepair }]}
+              >
+                <Feather name="zap" size={24} color={theme.text} />
+                <ThemedText style={styles.energyOptionLabel}>High</ThemedText>
+                <ThemedText style={[styles.energyOptionHint, { color: theme.textSecondary }]}>
+                  Full steam
+                </ThemedText>
+              </Pressable>
+            </View>
+
+            <Pressable
+              onPress={handleSkipEnergyCheck}
+              style={styles.skipEnergyButton}
+            >
+              <ThemedText style={{ color: theme.textSecondary }}>
+                Not sure, just start
+              </ThemedText>
             </Pressable>
           </View>
         </Pressable>
@@ -427,5 +505,57 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 16,
+  },
+  energyCheckContent: {
+    width: "100%",
+    maxWidth: 360,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.xl,
+    alignItems: "center",
+  },
+  energyCheckTitle: {
+    textAlign: "center",
+    marginBottom: Spacing.md,
+  },
+  selectedTaskCard: {
+    width: "100%",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    marginBottom: Spacing.md,
+  },
+  selectedTaskName: {
+    fontSize: 16,
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  energyCheckHint: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: Spacing.lg,
+    fontStyle: "italic",
+  },
+  energyOptions: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    width: "100%",
+    marginBottom: Spacing.lg,
+  },
+  energyOption: {
+    flex: 1,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  energyOptionLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  energyOptionHint: {
+    fontSize: 12,
+    textAlign: "center",
+  },
+  skipEnergyButton: {
+    padding: Spacing.sm,
   },
 });
