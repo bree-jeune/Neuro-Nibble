@@ -11,6 +11,8 @@ import * as Haptics from "expo-haptics";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { ThemedText } from "@/components/ThemedText";
 import { AvatarPicker } from "@/components/AvatarPicker";
+import { BreathingPacer } from "@/components/BreathingPacer";
+import { RoomSwitcher } from "@/components/RoomSwitcher";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useAppStore } from "@/lib/store";
@@ -172,6 +174,11 @@ export default function ProfileScreen() {
       }}
       scrollIndicatorInsets={{ bottom: insets.bottom }}
     >
+      <View style={styles.shapesRow}>
+        <BreathingPacer />
+        <RoomSwitcher />
+      </View>
+
       <View style={styles.avatarSection}>
         <AvatarPicker
           selectedIndex={avatarIndex}
@@ -424,6 +431,11 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  shapesRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: Spacing.lg,
+  },
   avatarSection: {
     alignItems: "center",
     marginBottom: Spacing.lg,
