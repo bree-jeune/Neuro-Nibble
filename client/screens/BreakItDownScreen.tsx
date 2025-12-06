@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { View, StyleSheet, TextInput, Pressable, FlatList, Modal } from "react-native";
+import { View, StyleSheet, TextInput, Pressable, FlatList, Modal, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight, HeaderButton } from "@react-navigation/elements";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -99,6 +99,18 @@ export default function BreakItDownScreen() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [showBiteInspiration, setShowBiteInspiration] = useState(false);
+
+  const quickChips = [
+    "Email",
+    "Laundry", 
+    "Dishes",
+    "Shower",
+    "Cleaning",
+    "Errands",
+    "Cooking",
+    "Work task",
+  ];
 
   const canSave = title.trim().length > 0;
   const canStartMinimal = title.trim().length > 0 && firstStepText.trim().length > 0;
@@ -517,7 +529,7 @@ export default function BreakItDownScreen() {
                   style={[styles.stopHereButton, { borderColor: theme.border }]}
                 >
                   <ThemedText style={{ color: theme.text }}>
-                    Stop Here
+                    Bank this Win
                   </ThemedText>
                 </Pressable>
               </View>
@@ -545,6 +557,39 @@ export default function BreakItDownScreen() {
             <ThemedText type="h3" style={styles.sectionTitle}>
               What's freezing you?
             </ThemedText>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.quickChipsContainer}
+              style={styles.quickChipsScroll}
+            >
+              {quickChips.map((chip) => (
+                <Pressable
+                  key={chip}
+                  onPress={() => {
+                    if (hapticsEnabled) {
+                      Haptics.selectionAsync();
+                    }
+                    setTitle(chip);
+                  }}
+                  style={[
+                    styles.quickChip,
+                    { 
+                      backgroundColor: title === chip ? theme.primary : theme.backgroundDefault,
+                    },
+                  ]}
+                >
+                  <ThemedText 
+                    style={[
+                      styles.quickChipText, 
+                      { color: title === chip ? "#FFFFFF" : theme.text }
+                    ]}
+                  >
+                    {chip}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </ScrollView>
             <TextInput
               style={[
                 styles.titleInput,
@@ -765,42 +810,54 @@ export default function BreakItDownScreen() {
 
           {steps.length === 0 ? (
             <View style={styles.biteExamplesContainer}>
-              <ThemedText style={[styles.biteExamplesLabel, { color: theme.textSecondary }]}>
-                Example bites for inspiration:
-              </ThemedText>
-              <View style={styles.biteExamples}>
-                {[
-                  { text: "Open the app or document", mins: 2 },
-                  { text: "Set a 5-minute timer", mins: 5 },
-                  { text: "Put away just 5 items", mins: 5 },
-                  { text: "Write just the first sentence", mins: 2 },
-                ].map((bite, index) => (
-                  <Pressable
-                    key={index}
-                    onPress={() => {
-                      if (hapticsEnabled) {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }
-                      const newStep: Step = {
-                        id: Date.now().toString() + index,
-                        text: bite.text,
-                        minutes: bite.mins,
-                        completed: false,
-                      };
-                      setSteps(prev => [...prev, newStep]);
-                    }}
-                    style={[styles.biteExample, { backgroundColor: theme.backgroundDefault }]}
-                  >
-                    <View style={styles.biteExampleContent}>
-                      <ThemedText style={styles.biteExampleText}>{bite.text}</ThemedText>
-                      <ThemedText style={[styles.biteExampleTime, { color: theme.textSecondary }]}>
-                        {bite.mins} min
-                      </ThemedText>
-                    </View>
-                    <Feather name="plus-circle" size={18} color={theme.primary} />
-                  </Pressable>
-                ))}
-              </View>
+              <Pressable 
+                onPress={() => setShowBiteInspiration(!showBiteInspiration)}
+                style={styles.inspirationToggle}
+              >
+                <Feather 
+                  name={showBiteInspiration ? "chevron-down" : "chevron-right"} 
+                  size={16} 
+                  color={theme.primary} 
+                />
+                <ThemedText style={[styles.inspirationToggleText, { color: theme.primary }]}>
+                  Need inspiration?
+                </ThemedText>
+              </Pressable>
+              {showBiteInspiration ? (
+                <View style={styles.biteExamples}>
+                  {[
+                    { text: "Open the app or document", mins: 2 },
+                    { text: "Set a 5-minute timer", mins: 5 },
+                    { text: "Put away just 5 items", mins: 5 },
+                    { text: "Write just the first sentence", mins: 2 },
+                  ].map((bite, index) => (
+                    <Pressable
+                      key={index}
+                      onPress={() => {
+                        if (hapticsEnabled) {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }
+                        const newStep: Step = {
+                          id: Date.now().toString() + index,
+                          text: bite.text,
+                          minutes: bite.mins,
+                          completed: false,
+                        };
+                        setSteps(prev => [...prev, newStep]);
+                      }}
+                      style={[styles.biteExample, { backgroundColor: theme.backgroundDefault }]}
+                    >
+                      <View style={styles.biteExampleContent}>
+                        <ThemedText style={styles.biteExampleText}>{bite.text}</ThemedText>
+                        <ThemedText style={[styles.biteExampleTime, { color: theme.textSecondary }]}>
+                          {bite.mins} min
+                        </ThemedText>
+                      </View>
+                      <Feather name="plus-circle" size={18} color={theme.primary} />
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
             </View>
           ) : null}
         </View>
@@ -1204,5 +1261,31 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
+  },
+  quickChipsScroll: {
+    marginBottom: Spacing.md,
+  },
+  quickChipsContainer: {
+    gap: Spacing.sm,
+    paddingRight: Spacing.lg,
+  },
+  quickChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+  },
+  quickChipText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  inspirationToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    marginBottom: Spacing.md,
+  },
+  inspirationToggleText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
 });

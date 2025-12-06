@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from "react";
-import { View, ScrollView, StyleSheet, Pressable, Modal, TextInput } from "react-native";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { View, ScrollView, StyleSheet, Pressable, Modal, TextInput, Animated, Easing } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -71,6 +71,34 @@ export default function HomeScreen() {
   }, []);
   
   const [bodyDoublingCount] = useState(getBodyDoublingCount);
+
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.4,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [pulseAnim]);
+
+  const hasTouchedTasksToday = tasks.some((t) => {
+    const today = new Date().toISOString().split("T")[0];
+    return t.lastWorkedOn?.startsWith(today);
+  });
 
   const completedToday = tasks.filter((t) => {
     const today = new Date().toISOString().split("T")[0];
@@ -174,7 +202,18 @@ export default function HomeScreen() {
         <WeeklyRoomBadge room={weeklyRoom} />
 
         <View style={[styles.bodyDoublingBanner, { backgroundColor: theme.primary + "10" }]}>
-          <Feather name="users" size={16} color={theme.primary} />
+          <View style={styles.bodyDoublingLeft}>
+            <Animated.View 
+              style={[
+                styles.pulsingDot, 
+                { 
+                  backgroundColor: theme.success,
+                  opacity: pulseAnim,
+                }
+              ]} 
+            />
+            <Feather name="users" size={16} color={theme.primary} />
+          </View>
           <ThemedText style={[styles.bodyDoublingText, { color: theme.primary }]}>
             {bodyDoublingCount} people working alongside you right now
           </ThemedText>
@@ -222,21 +261,23 @@ export default function HomeScreen() {
           />
         ) : null}
 
-        <Pressable
-          onPress={() => setShowEndDayModal(true)}
-          style={[styles.endDayButton, { backgroundColor: theme.backgroundDefault }]}
-        >
-          <View style={[styles.endDayIcon, { backgroundColor: theme.secondary }]}>
-            <Feather name="sunset" size={20} color="#FFFFFF" />
-          </View>
-          <View style={styles.endDayTextContainer}>
-            <ThemedText style={styles.endDayTitle}>End Day</ThemedText>
-            <ThemedText style={[styles.endDaySubtitle, { color: theme.textSecondary }]}>
-              Close out today and start fresh tomorrow
-            </ThemedText>
-          </View>
-          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
-        </Pressable>
+        {bookendCompleted || hasTouchedTasksToday ? (
+          <Pressable
+            onPress={() => setShowEndDayModal(true)}
+            style={[styles.endDayButton, { backgroundColor: theme.backgroundDefault }]}
+          >
+            <View style={[styles.endDayIcon, { backgroundColor: theme.secondary }]}>
+              <Feather name="sunset" size={20} color="#FFFFFF" />
+            </View>
+            <View style={styles.endDayTextContainer}>
+              <ThemedText style={styles.endDayTitle}>End Day</ThemedText>
+              <ThemedText style={[styles.endDaySubtitle, { color: theme.textSecondary }]}>
+                Close out today and start fresh tomorrow
+              </ThemedText>
+            </View>
+            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+          </Pressable>
+        ) : null}
 
         <View style={styles.permissionContainer}>
           <ThemedText style={[styles.permissionText, { color: theme.textSecondary }]}>

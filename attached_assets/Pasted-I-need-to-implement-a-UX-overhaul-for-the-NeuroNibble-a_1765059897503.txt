@@ -1,0 +1,35 @@
+I need to implement a UX overhaul for the NeuroNibble app to better support neurodivergent users (ADHD focus). Based on a recent UX audit, we need to reduce friction and improve positive reinforcement. Please implement the following changes to the React Native/Expo codebase:
+
+1. Refactor BreakItDownScreen.tsx (Reduce Initiation Paralysis)
+
+Add "Quick Chips": Above the main text input, add a horizontal ScrollView with pill-shaped buttons for common tasks (e.g., "Email", "Laundry", "Dishes", "Shower"). Tapping a chip should auto-fill the "What's freezing you?" input.
+
+Progressive Disclosure: In the "Edit Bites" view, hide the "Example bites" list by default behind a "✨ Need inspiration?" toggle/accordion to reduce visual clutter.
+
+Smart Defaults: Pre-select the 5-minute time estimate button so the user doesn't have to make a decision immediately.
+
+2. Update HomeScreen.tsx (Fix Day State Logic)
+
+Conditional Rendering: The "Start your day" and "End Day" buttons should not be visible at the same time.
+
+Morning State: Show only "Start your day".
+
+Active State: Once the day is started, hide the "Start" button.
+
+Evening State: Only show the "End Day" button if the user has touched at least one task/bite (or check currentDate logic).
+
+Active Body Doubling: Add a subtle pulsing green dot animation next to the "people working alongside you" text to make it feel more "live."
+
+3. Revamp ProfileScreen.tsx (Gamify Day 1)
+
+Move Settings: Move the configuration toggles (Haptic, Notifications, Energy Check-in) out of the main view. Place them in a modal or separate view accessible via a "Gear" icon in the header.
+
+Immediate Reward: Replace the "Just getting started / stats appear later" placeholder. Instead, if there is no history, display a "Day 1: The Hardest Step" achievement badge or card that validates the user just for showing up.
+
+4. Update Micro-copy & Feedback
+
+Reflect Screen: In the "Dump the heavy stuff" input, add rotating placeholder text with gentle prompts like "What's one thing making you anxious?" rather than a blank box.
+
+Completion Modal: Change the "Stop Here" button text to "Save & Rest" or "Bank this Win" to frame stopping as a positive action (saving progress) rather than quitting.
+
+Please prioritize these changes to reduce cognitive load. Start by modifying BreakItDownScreen.tsx.
