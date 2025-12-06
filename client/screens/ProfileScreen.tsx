@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { View, StyleSheet, TextInput, Pressable, Switch, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -28,15 +28,35 @@ export default function ProfileScreen() {
     setHapticsEnabled,
     notificationsEnabled,
     setNotificationsEnabled,
+    energyCheckInEnabled,
+    setEnergyCheckInEnabled,
     resetAllData,
     tasks,
+    activeDays,
   } = useAppStore();
 
   const completedSteps = tasks.reduce((acc, task) => {
     return acc + task.steps.filter(s => s.completed).length;
   }, 0);
 
+  const totalSteps = tasks.reduce((acc, task) => acc + task.steps.length, 0);
   const totalBites = tasks.length;
+  const completionRate = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+
+  const weeklyActivity = useMemo(() => {
+    const today = new Date();
+    const weekDays: { day: string; active: boolean }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split("T")[0];
+      const dayName = d.toLocaleDateString("en-US", { weekday: "short" }).charAt(0);
+      weekDays.push({ day: dayName, active: activeDays.includes(dateStr) });
+    }
+    return weekDays;
+  }, [activeDays]);
+
+  const daysActiveThisWeek = weeklyActivity.filter((d) => d.active).length;
 
   const handleHapticsToggle = useCallback((value: boolean) => {
     if (value) {
@@ -103,22 +123,59 @@ export default function ProfileScreen() {
         />
       </View>
 
-      <View style={styles.statsSection}>
-        <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>
-          <ThemedText type="h2" style={{ color: theme.primary }}>
-            {totalBites}
-          </ThemedText>
-          <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
-            Total bites
-          </ThemedText>
+      <View style={styles.analyticsSection}>
+        <ThemedText type="h3" style={styles.sectionTitle}>
+          Your Progress
+        </ThemedText>
+        <ThemedText style={[styles.effortMessage, { color: theme.textSecondary }]}>
+          {daysActiveThisWeek > 0
+            ? `You showed up ${daysActiveThisWeek} day${daysActiveThisWeek !== 1 ? "s" : ""} this week`
+            : "Every small step counts"}
+        </ThemedText>
+
+        <View style={styles.weeklyChart}>
+          {weeklyActivity.map((d, i) => (
+            <View key={i} style={styles.dayColumn}>
+              <View
+                style={[
+                  styles.dayDot,
+                  {
+                    backgroundColor: d.active ? theme.primary : theme.backgroundSecondary,
+                  },
+                ]}
+              />
+              <ThemedText style={[styles.dayLabel, { color: theme.textSecondary }]}>
+                {d.day}
+              </ThemedText>
+            </View>
+          ))}
         </View>
-        <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>
-          <ThemedText type="h2" style={{ color: theme.primary }}>
-            {completedSteps}
-          </ThemedText>
-          <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
-            Steps done
-          </ThemedText>
+
+        <View style={styles.statsRow}>
+          <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>
+            <ThemedText type="h2" style={{ color: theme.primary }}>
+              {totalBites}
+            </ThemedText>
+            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Total bites
+            </ThemedText>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>
+            <ThemedText type="h2" style={{ color: theme.primary }}>
+              {completedSteps}
+            </ThemedText>
+            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Steps done
+            </ThemedText>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>
+            <ThemedText type="h2" style={{ color: theme.primary }}>
+              {completionRate}%
+            </ThemedText>
+            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Completion
+            </ThemedText>
+          </View>
         </View>
       </View>
 
@@ -147,6 +204,23 @@ export default function ProfileScreen() {
           <Switch
             value={notificationsEnabled}
             onValueChange={setNotificationsEnabled}
+            trackColor={{ false: theme.backgroundSecondary, true: theme.primary }}
+          />
+        </View>
+
+        <View style={[styles.settingRow, { borderBottomColor: theme.border }]}>
+          <View style={styles.settingInfo}>
+            <Feather name="zap" size={20} color={theme.text} />
+            <View style={styles.settingTextGroup}>
+              <ThemedText style={styles.settingLabel}>Energy check-in</ThemedText>
+              <ThemedText style={[styles.settingDesc, { color: theme.textSecondary }]}>
+                Ask about your energy level when starting tasks
+              </ThemedText>
+            </View>
+          </View>
+          <Switch
+            value={energyCheckInEnabled}
+            onValueChange={setEnergyCheckInEnabled}
             trackColor={{ false: theme.backgroundSecondary, true: theme.primary }}
           />
         </View>
@@ -195,10 +269,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     letterSpacing: 0.5,
   },
-  statsSection: {
-    flexDirection: "row",
-    gap: Spacing.md,
+  analyticsSection: {
     marginBottom: Spacing.xl,
+  },
+  effortMessage: {
+    fontSize: 14,
+    fontStyle: "italic",
+    marginBottom: Spacing.md,
+    textAlign: "center",
+  },
+  weeklyChart: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: Spacing.lg,
+  },
+  dayColumn: {
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  dayDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  dayLabel: {
+    fontSize: 11,
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
   },
   statCard: {
     flex: 1,
@@ -208,7 +307,8 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     marginTop: Spacing.xs,
-    fontSize: 12,
+    fontSize: 11,
+    textAlign: "center",
   },
   settingsSection: {
     marginBottom: Spacing.xl,
@@ -230,6 +330,13 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     fontSize: 16,
+  },
+  settingTextGroup: {
+    flex: 1,
+  },
+  settingDesc: {
+    fontSize: 12,
+    marginTop: 2,
   },
   dangerSection: {
     marginBottom: Spacing.xl,

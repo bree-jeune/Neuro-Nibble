@@ -18,7 +18,9 @@ interface AppStore extends AppState {
   setAvatarIndex: (index: number) => void;
   setHapticsEnabled: (enabled: boolean) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
+  setEnergyCheckInEnabled: (enabled: boolean) => void;
   setBookendCompleted: (completed: boolean) => void;
+  markActiveDay: () => void;
   resetAllData: () => void;
 }
 
@@ -33,8 +35,10 @@ const initialState: AppState = {
   avatarIndex: 0,
   hapticsEnabled: true,
   notificationsEnabled: false,
+  energyCheckInEnabled: true,
   bookendCompleted: false,
   lastBookendDate: "",
+  activeDays: [],
 };
 
 export const useAppStore = create<AppStore>()(
@@ -70,19 +74,39 @@ export const useAppStore = create<AppStore>()(
       },
       
       toggleStepComplete: (taskId, stepId) => {
-        set((state) => ({
-          tasks: state.tasks.map((t) =>
-            t.id === taskId
-              ? {
-                  ...t,
-                  lastWorkedOn: new Date().toISOString(),
-                  steps: t.steps.map((s) =>
-                    s.id === stepId ? { ...s, completed: !s.completed } : s
-                  ),
-                }
-              : t
-          ),
-        }));
+        const today = new Date().toISOString().split("T")[0];
+        set((state) => {
+          const task = state.tasks.find((t) => t.id === taskId);
+          const step = task?.steps.find((s) => s.id === stepId);
+          const isCompletingStep = step && !step.completed;
+
+          let updatedActiveDays = state.activeDays;
+          if (isCompletingStep && !state.activeDays.includes(today)) {
+            updatedActiveDays = state.activeDays
+              .filter((d) => {
+                const dayDate = new Date(d);
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                return dayDate >= thirtyDaysAgo;
+              })
+              .concat(today);
+          }
+
+          return {
+            activeDays: updatedActiveDays,
+            tasks: state.tasks.map((t) =>
+              t.id === taskId
+                ? {
+                    ...t,
+                    lastWorkedOn: new Date().toISOString(),
+                    steps: t.steps.map((s) =>
+                      s.id === stepId ? { ...s, completed: !s.completed } : s
+                    ),
+                  }
+                : t
+            ),
+          };
+        });
       },
       
       setBrainDump: (text) => set({ brainDump: text }),
@@ -108,6 +132,26 @@ export const useAppStore = create<AppStore>()(
       setHapticsEnabled: (enabled) => set({ hapticsEnabled: enabled }),
       
       setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
+      
+      setEnergyCheckInEnabled: (enabled) => set({ energyCheckInEnabled: enabled }),
+      
+      markActiveDay: () => {
+        const today = new Date().toISOString().split("T")[0];
+        set((state) => {
+          if (state.activeDays.includes(today)) {
+            return state;
+          }
+          const last30Days = state.activeDays
+            .filter((d) => {
+              const dayDate = new Date(d);
+              const thirtyDaysAgo = new Date();
+              thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+              return dayDate >= thirtyDaysAgo;
+            })
+            .concat(today);
+          return { activeDays: last30Days };
+        });
+      },
       
       setBookendCompleted: (completed) => {
         const today = new Date().toISOString().split("T")[0];

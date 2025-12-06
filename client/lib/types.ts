@@ -33,6 +33,8 @@ export interface AppState {
   avatarIndex: number;
   hapticsEnabled: boolean;
   notificationsEnabled: boolean;
+  energyCheckInEnabled: boolean;
   bookendCompleted: boolean;
   lastBookendDate: string;
+  activeDays: string[];
 }

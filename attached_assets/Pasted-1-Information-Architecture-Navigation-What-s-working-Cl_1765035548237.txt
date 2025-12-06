@@ -1,0 +1,177 @@
+1. Information Architecture & Navigation
+What’s working
+
+Clear bottom nav with four tabs: Home, Tasks, Reflect, You.
+Home focuses on today and energy, which is a good mental model for people who think in “today vs not-today” rather than calendars.
+“Pick up where you left off” is excellent for task‑switching and memory gaps.
+Issues / iterations
+
+Unclear mental model of the app
+Terms like bites, steps, Gentle Week, Repair Week, Start your day appear without explanation.
+For executive dysfunction, any ambiguity = friction.
+Iteration
+Add a 3–4 screen onboarding that explains:
+“Bite = a small task. Steps = tiny actions inside a bite.”
+“Energy levels help you match tasks to how you feel.”
+“Gentle Week / Repair Week change how much we expect from you.”
+Add a small “?” icon or “Learn more” link next to Gentle/Repair Week and energy filters with a one‑sentence tooltip.
+Tab purposes are not explicit
+“Reflect” and “You” are guessable but not obvious in function.
+Iteration
+Add short subtitles under icons (e.g., “Reflect – check‑ins”, “You – profile & settings”) or show a one‑time tooltip the first time each tab is opened.
+2. Copy, Microcopy & Emotional Safety
+What’s working
+
+Supportive phrases:
+“What’s freezing you?”
+“You’re allowed to stop whenever you need to.”
+“You can stop after the first step. That still counts.”
+“Maintenance isn’t failure.”
+These directly counter shame, all‑or‑nothing thinking, and perfectionism.
+Issues / iterations
+
+Terminology clarity
+“0/1 bites” on the Tasks screen is confusing: is the bite the whole task or a sub‑task?
+“Start your day” doesn’t say what will actually happen.
+Iteration
+Replace “0/1 bites” with “0/1 steps done” or “0 of 1 mini‑steps done.”
+In the Break It Down view, label clearly:
+“Task (we call this a Bite)”
+“Tiny steps inside this bite.”
+Under “Start your day”, add a subline like: “Check in with your energy and see today’s bites.”
+Gentle/Repair Week meaning
+“You don’t have to upgrade” and “Maintenance isn’t failure” are emotionally great, but behaviorally vague.
+Iteration
+Add a short description on tap or inline:
+Gentle Week: “We’ll keep expectations low and focus on tiny wins.”
+Repair Week: “We’ll help you maintain or gently catch up, not push harder.”
+3. Visual Design & Cognitive Load
+What’s working
+
+Dark theme, muted palette → low sensory load.
+Large tap targets for energy levels and primary CTAs.
+Plenty of whitespace; screens are not crowded.
+Issues / iterations
+
+Contrast & state clarity
+Low/Medium/High energy buttons and some cards use subtle color differences; for some autistic/ADHD users or those with visual processing issues, state can be hard to parse at a glance.
+Iteration
+Increase contrast between selected vs unselected states (border, icon, or checkmark).
+Consider adding a small label like “Selected” for the active energy level (visually subtle but explicit).
+Hierarchy of “what to do now”
+On Home, energy, Gentle/Repair Week, “Start your day”, “Pick up where you left off”, and affirmations all compete.
+Iteration
+Make a single, dominant “Next action” area:
+If no day started → “Start your day” as the primary card.
+If day started and there’s an active bite → “Resume: [bite name]”.
+Move affirmations slightly down or reduce their visual weight so they support rather than compete.
+Accessibility options
+Current UI is visually calm but not adjustable.
+Iteration
+In “You” > Settings, add:
+Text size options (S / M / L).
+A “High contrast mode”.
+A “Minimal motion” toggle if you add any animations.
+4. Task Creation & “Break It Down” Flow
+What’s working
+
+“What’s freezing you?” is a brilliant framing for executive dysfunction.
+Explicit micro‑steps with time estimates and a timer are very aligned with ADHD needs.
+“You can stop after the first step. That still counts.” is exactly the right message.
+Issues / iterations
+
+Time controls & time blindness
++/- 5m increments only; no direct entry.
+For time‑blind users, estimating 5 vs 10 vs 15 minutes is already hard.
+Iteration
+Allow direct time entry (tap the “5m” to type a number).
+Offer presets: 1m, 3m, 5m, 10m, 15m.
+Optionally add a “No time estimate” mode for users who find estimates stressful.
+Keyboard occluding content
+In the screenshot where you type “find my phone,” the keyboard covers much of the screen; it’s unclear if steps list and Save are still visible.
+Iteration
+Ensure the view scrolls so:
+The current text field and the Save button are always visible.
+Consider a “Done” button above the keyboard to collapse it quickly.
+Step list affordances
+In the running timer view, steps are listed with checkboxes, but it’s not obvious if you can reorder or edit them.
+Iteration
+Add drag handles for reordering steps.
+Allow quick edit on tap (for users who realize a step is too big and want to split it).
+Cognitive scaffolding for breaking tasks down
+Some users will still struggle to generate micro‑steps.
+Iteration
+Add optional templates or prompts:
+“Getting started” template: “Find X → Open Y → Do Z for 5 minutes.”
+A “Suggest steps” button that offers example micro‑steps based on the task name.
+5. State, Progress & Motivation
+What’s working
+
+“Day started. You’re here.” is a gentle, validating state.
+“Pick up where you left off” is perfect for context‑loss and task‑switching.
+Issues / iterations
+
+Progress feedback is too minimal
+“1 Total bites / 0 Steps done” is very bare and not emotionally rewarding.
+Iteration
+Add:
+A simple progress ring or bar for today’s steps.
+Weekly view: “You completed steps on 3 of 7 days.”
+Keep framing effort‑based, not failure‑based (no red, no “missed days”).
+Completion reinforcement
+When a step or bite is completed, feedback appears subtle.
+Iteration
+Add a small, calm animation (e.g., card gently “fills” or a checkmark animates).
+Optional soft sound or haptic (toggle in Settings).
+Avoiding pressure
+If you add any streaks or badges, they can backfire for anxiety/ADHD.
+Iteration
+If you gamify, keep it low‑pressure:
+“You showed up 3 days this week” instead of “3‑day streak.”
+No streak loss; just “most recent wins.”
+6. Personalization & Identity
+What’s working
+
+Avatar shapes/colors in “You” give a sense of ownership without requiring a photo.
+Display name is optional, which is good for privacy and low‑spoons onboarding.
+Issues / iterations
+
+Unclear meaning of avatar shapes
+If they’re purely decorative, that’s fine; if they encode something, it’s not explained.
+Iteration
+If decorative: add a tiny label like “Choose a color you like.”
+If meaningful (e.g., modes, archetypes): add a one‑line explanation.
+Settings discoverability
+Important toggles (haptics, timer notifications, reset all data) are buried.
+Iteration
+Group settings into:
+“Feedback & notifications”
+“Accessibility”
+“Data & privacy”
+Add a confirmation + undo for “Reset all data” to reduce anxiety about accidental taps.
+7. Neurodivergent‑Specific Opportunities
+Beyond polishing what’s there, a few features could make this app stand out for ND users:
+
+Energy‑aware suggestions
+When user selects “Low” energy, suggest:
+“Here are 1–2 low‑energy bites you could do in under 5 minutes.”
+For “High” energy, surface slightly bigger tasks.
+Sensory‑friendly modes
+A “Quiet mode” that:
+Disables sounds and strong haptics.
+Uses softer color changes.
+A “Focus mode” that:
+Shows only the current step and timer, hiding everything else.
+Reflection that reduces shame
+In Reflect, use structured prompts like:
+“What helped you start today?”
+“What got in the way (no blame, just info)?”
+Offer quick‑tap answers instead of requiring full text.
+Summary of Highest‑Impact Iterations
+If you prioritize, these will likely move the needle most for ND users:
+
+Clarify the core model (bites vs steps, energy, Gentle/Repair Week) via onboarding + inline tooltips.
+Strengthen visual hierarchy on Home so there’s always one obvious “next action.”
+Improve Break It Down: more flexible time controls, better keyboard behavior, and optional step suggestions.
+Add gentle but more visible progress and completion feedback, framed around effort.
+Introduce basic accessibility options (text size, contrast, motion) and clearer state indicators.
