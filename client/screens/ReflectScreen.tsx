@@ -14,6 +14,7 @@ import { SwipeableThoughtCard } from "@/components/SwipeableThoughtCard";
 import { DopamineVendingMachine } from "@/components/DopamineVendingMachine";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { DynamicFooter } from "@/components/DynamicFooter";
 import { useAppStore } from "@/lib/store";
 import type { WeeklyRoom, ThoughtItem, DopamineCost } from "@/lib/types";
 
@@ -231,11 +232,7 @@ export default function ReflectScreen() {
           />
         </View>
 
-        <View style={styles.permissionContainer}>
-          <ThemedText style={[styles.permissionText, { color: theme.textSecondary }]}>
-            Gentle weeks are valid.
-          </ThemedText>
-        </View>
+        <DynamicFooter screen="reflect" />
       </KeyboardAwareScrollViewCompat>
 
       {showToast ? (
@@ -322,13 +319,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     fontSize: 16,
     letterSpacing: 0.5,
-  },
-  permissionContainer: {
-    alignItems: "center",
-  },
-  permissionText: {
-    fontStyle: "italic",
-    textAlign: "center",
   },
   toast: {
     position: "absolute",

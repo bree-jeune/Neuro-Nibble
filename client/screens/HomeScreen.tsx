@@ -12,6 +12,7 @@ import { triggerHaptic } from "@/lib/haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { DynamicFooter } from "@/components/DynamicFooter";
 import { EnergyCard } from "@/components/EnergyCard";
 import { WeeklyRoomBadge } from "@/components/WeeklyRoomBadge";
 import { RecentTaskCard } from "@/components/RecentTaskCard";
@@ -283,11 +284,7 @@ export default function HomeScreen() {
           </Pressable>
         ) : null}
 
-        <View style={styles.permissionContainer}>
-          <ThemedText style={[styles.permissionText, { color: theme.textSecondary }]}>
-            You're allowed to stop whenever you need to.
-          </ThemedText>
-        </View>
+        <DynamicFooter screen="home" />
       </ScrollView>
 
       <Modal
@@ -464,14 +461,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     marginBottom: Spacing.md,
-  },
-  permissionContainer: {
-    marginTop: Spacing.xl,
-    alignItems: "center",
-  },
-  permissionText: {
-    fontStyle: "italic",
-    textAlign: "center",
   },
   endDayButton: {
     flexDirection: "row",

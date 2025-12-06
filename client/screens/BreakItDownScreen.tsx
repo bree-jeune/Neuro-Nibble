@@ -15,6 +15,7 @@ import { VisualTimer } from "@/components/VisualTimer";
 import { AudioToggleButton } from "@/components/AudioToggleButton";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { DynamicFooter } from "@/components/DynamicFooter";
 import { useAppStore } from "@/lib/store";
 import { useSnackbarStore } from "@/lib/snackbarStore";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
@@ -893,11 +894,7 @@ export default function BreakItDownScreen() {
         </View>
       </View>
 
-      <View style={styles.permissionContainer}>
-        <ThemedText style={[styles.permissionText, { color: theme.textSecondary }]}>
-          You can stop after the first bite. That still counts.
-        </ThemedText>
-      </View>
+      <DynamicFooter screen="tasks" />
     </KeyboardAwareScrollViewCompat>
   );
 }
@@ -1037,16 +1034,6 @@ const styles = StyleSheet.create({
   },
   energyContainer: {
     marginTop: Spacing.sm,
-  },
-  permissionContainer: {
-    marginTop: Spacing.lg,
-    alignItems: "center",
-    paddingHorizontal: Spacing.lg,
-  },
-  permissionText: {
-    fontStyle: "italic",
-    textAlign: "center",
-    lineHeight: 22,
   },
   workHeader: {
     paddingHorizontal: Spacing.lg,
