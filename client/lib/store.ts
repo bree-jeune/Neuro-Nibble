@@ -10,6 +10,7 @@ interface AppStore extends AppState {
   restoreTask: (task: Task, index?: number) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
+  archiveTask: (id: string) => void;
   toggleStepComplete: (taskId: string, stepId: string) => void;
   restoreStep: (taskId: string, step: Step, removeDayFromActive: string | null) => void;
   setBrainDump: (text: string) => void;
@@ -87,6 +88,16 @@ export const useAppStore = create<AppStore>()(
       deleteTask: (id) => {
         set((state) => ({
           tasks: state.tasks.filter((t) => t.id !== id),
+        }));
+      },
+      
+      archiveTask: (id) => {
+        set((state) => ({
+          tasks: state.tasks.map((t) =>
+            t.id === id
+              ? { ...t, isArchived: true, archivedAt: new Date().toISOString() }
+              : t
+          ),
         }));
       },
       

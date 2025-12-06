@@ -30,6 +30,8 @@ export interface Task {
     stepIndex: number;
     notes?: string;
   };
+  isArchived?: boolean;
+  archivedAt?: string;
 }
 
 export interface DailyReflection {

@@ -21,6 +21,59 @@ import type { EnergyLevel, Step } from "@/lib/types";
 
 type ViewMode = "minimal" | "edit" | "work";
 
+const getTemplateSteps = (taskTitle: string): Step[] => {
+  const templates: Record<string, { text: string; minutes: number }[]> = {
+    "Reply to emails": [
+      { text: "Open inbox", minutes: 2 },
+      { text: "Read and sort by priority", minutes: 5 },
+      { text: "Reply to one email", minutes: 5 },
+    ],
+    "Clean my room": [
+      { text: "Pick up 5 items from the floor", minutes: 2 },
+      { text: "Make the bed", minutes: 5 },
+      { text: "Clear one surface", minutes: 5 },
+    ],
+    "Do laundry": [
+      { text: "Gather dirty clothes", minutes: 5 },
+      { text: "Load the washer", minutes: 5 },
+      { text: "Set a reminder for when it's done", minutes: 2 },
+    ],
+    "Make a phone call": [
+      { text: "Write down what you need to say", minutes: 2 },
+      { text: "Find the number", minutes: 2 },
+      { text: "Make the call", minutes: 5 },
+    ],
+    "Schedule appointment": [
+      { text: "Look up the phone number or website", minutes: 2 },
+      { text: "Check your calendar for availability", minutes: 2 },
+      { text: "Book the appointment", minutes: 5 },
+    ],
+    "Pay bills": [
+      { text: "Gather bills that need paying", minutes: 2 },
+      { text: "Log into your bank", minutes: 2 },
+      { text: "Pay one bill", minutes: 5 },
+    ],
+    "Grocery shopping": [
+      { text: "Check what you're out of", minutes: 5 },
+      { text: "Write a short list", minutes: 5 },
+      { text: "Get your bags ready", minutes: 2 },
+    ],
+    "Start that project": [
+      { text: "Open the file or document", minutes: 2 },
+      { text: "Write just one sentence or line", minutes: 5 },
+      { text: "Save and celebrate", minutes: 2 },
+    ],
+  };
+  
+  const stepsData = templates[taskTitle] || [];
+  return stepsData.map((s, i) => ({
+    id: (Date.now() + i).toString(),
+    text: s.text,
+    minutes: s.minutes,
+    completed: false,
+  }));
+};
+
 export default function BreakItDownScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
@@ -28,7 +81,7 @@ export default function BreakItDownScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "BreakItDown">>();
 
-  const { tasks, addTask, updateTask, toggleStepComplete, restoreStep, hapticsEnabled } = useAppStore();
+  const { tasks, addTask, updateTask, toggleStepComplete, restoreStep, archiveTask, hapticsEnabled } = useAppStore();
   const showSnackbar = useSnackbarStore((s) => s.show);
   
   const existingTask = route.params?.taskId 
@@ -45,6 +98,7 @@ export default function BreakItDownScreen() {
   const [activeTimer, setActiveTimer] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
 
   const canSave = title.trim().length > 0;
   const canStartMinimal = title.trim().length > 0 && firstStepText.trim().length > 0;
@@ -218,14 +272,24 @@ export default function BreakItDownScreen() {
     if (existingTask) {
       toggleStepComplete(existingTask.id, stepId);
     }
-    setSteps(prev => prev.map(s => 
+    
+    const newSteps = steps.map(s => 
       s.id === stepId ? { 
         ...s, 
         completed: !s.completed,
         completedAt: !s.completed ? new Date().toISOString() : undefined,
       } : s
-    ));
+    );
+    setSteps(newSteps);
     setActiveTimer(null);
+    
+    const isCompletingStep = !wasCompleted;
+    const allNowComplete = isCompletingStep && newSteps.every(s => s.completed);
+    
+    if (allNowComplete && existingTask && !existingTask.isArchived) {
+      setShowCompletionModal(true);
+      return;
+    }
     
     if (!wasCompleted && !skipCelebration) {
       setShowCelebration(true);
@@ -275,7 +339,7 @@ export default function BreakItDownScreen() {
         {nextIncompleteStep ? (
           <View style={styles.currentStepContainer}>
             <ThemedText style={[styles.currentStepLabel, { color: theme.textSecondary }]}>
-              Current bite
+              Current bite ({completedSteps + 1} of {steps.length})
             </ThemedText>
             <View style={[styles.currentStepCard, { backgroundColor: theme.backgroundDefault }]}>
               <ThemedText type="h3" style={styles.currentStepText}>
@@ -310,6 +374,17 @@ export default function BreakItDownScreen() {
             <ThemedText style={[styles.allDoneMessage, { color: theme.textSecondary }]}>
               You did it. That was enough.
             </ThemedText>
+            {existingTask && !existingTask.isArchived ? (
+              <Pressable
+                onPress={() => setShowCompletionModal(true)}
+                style={[styles.archivePromptButton, { backgroundColor: theme.primary }]}
+              >
+                <Feather name="archive" size={18} color="#FFFFFF" />
+                <ThemedText style={{ color: "#FFFFFF", fontWeight: "600" }}>
+                  Archive This Task
+                </ThemedText>
+              </Pressable>
+            ) : null}
           </View>
         )}
 
@@ -362,6 +437,54 @@ export default function BreakItDownScreen() {
             </ThemedText>
           </View>
         ) : null}
+
+        <Modal
+          visible={showCompletionModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowCompletionModal(false)}
+        >
+          <View style={styles.celebrationOverlay}>
+            <View style={[styles.celebrationCard, { backgroundColor: theme.backgroundDefault }]}>
+              <View style={[styles.celebrationIcon, { backgroundColor: theme.success + "20" }]}>
+                <Feather name="archive" size={32} color={theme.success} />
+              </View>
+              <ThemedText type="h2" style={styles.celebrationTitle}>
+                Task Complete
+              </ThemedText>
+              <ThemedText style={[styles.celebrationSubtitle, { color: theme.textSecondary }]}>
+                Would you like to archive this task? It will be hidden from your active list.
+              </ThemedText>
+              <View style={styles.celebrationActions}>
+                <Pressable 
+                  onPress={() => {
+                    if (existingTask) {
+                      if (hapticsEnabled) {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      }
+                      archiveTask(existingTask.id);
+                      setShowCompletionModal(false);
+                      navigation.goBack();
+                    }
+                  }}
+                  style={[styles.keepGoingButton, { backgroundColor: theme.primary }]}
+                >
+                  <ThemedText style={{ color: "#FFFFFF", fontWeight: "600" }}>
+                    Yes, Archive It
+                  </ThemedText>
+                </Pressable>
+                <Pressable 
+                  onPress={() => setShowCompletionModal(false)}
+                  style={[styles.stopHereButton, { borderColor: theme.border }]}
+                >
+                  <ThemedText style={{ color: theme.text }}>
+                    Keep It Active
+                  </ThemedText>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         <Modal
           visible={showCelebration}
@@ -534,10 +657,19 @@ export default function BreakItDownScreen() {
         {!title.trim() ? (
           <View style={styles.examplesContainer}>
             <ThemedText style={[styles.examplesLabel, { color: theme.textSecondary }]}>
-              Or try one of these:
+              Common tasks to break down:
             </ThemedText>
             <View style={styles.exampleChips}>
-              {["Reply to emails", "Do laundry", "Start that project", "Make a phone call"].map((example) => (
+              {[
+                "Reply to emails",
+                "Clean my room",
+                "Do laundry", 
+                "Make a phone call",
+                "Schedule appointment",
+                "Pay bills",
+                "Grocery shopping",
+                "Start that project",
+              ].map((example) => (
                 <Pressable
                   key={example}
                   onPress={() => {
@@ -545,6 +677,7 @@ export default function BreakItDownScreen() {
                       Haptics.selectionAsync();
                     }
                     setTitle(example);
+                    setSteps(getTemplateSteps(example));
                   }}
                   style={[styles.exampleChip, { backgroundColor: theme.backgroundDefault }]}
                 >
@@ -940,6 +1073,15 @@ const styles = StyleSheet.create({
   allDoneMessage: {
     fontStyle: "italic",
     textAlign: "center",
+  },
+  archivePromptButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.xl,
   },
   upcomingContainer: {
     paddingHorizontal: Spacing.lg,

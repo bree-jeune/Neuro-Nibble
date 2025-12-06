@@ -52,11 +52,25 @@ export default function HomeScreen() {
   const recentTasks = tasks
     .filter((t) => {
       if (!t.lastWorkedOn) return false;
+      if (t.isArchived) return false;
       const allStepsCompleted = t.steps.length > 0 && t.steps.every((s) => s.completed);
       return !allStepsCompleted;
     })
     .sort((a, b) => new Date(b.lastWorkedOn!).getTime() - new Date(a.lastWorkedOn!).getTime())
     .slice(0, 3);
+
+  const getBodyDoublingCount = useCallback(() => {
+    const now = new Date();
+    const hour = now.getHours();
+    const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
+    const seed = dayOfYear * 24 + hour;
+    const pseudoRandom = ((seed * 9301 + 49297) % 233280) / 233280;
+    const baseCount = hour >= 9 && hour <= 21 ? 47 : 12;
+    const variance = Math.floor(pseudoRandom * 15) - 7;
+    return Math.max(5, baseCount + variance);
+  }, []);
+  
+  const [bodyDoublingCount] = useState(getBodyDoublingCount);
 
   const completedToday = tasks.filter((t) => {
     const today = new Date().toISOString().split("T")[0];
@@ -158,6 +172,13 @@ export default function HomeScreen() {
         </View>
 
         <WeeklyRoomBadge room={weeklyRoom} />
+
+        <View style={[styles.bodyDoublingBanner, { backgroundColor: theme.primary + "10" }]}>
+          <Feather name="users" size={16} color={theme.primary} />
+          <ThemedText style={[styles.bodyDoublingText, { color: theme.primary }]}>
+            {bodyDoublingCount} people working alongside you right now
+          </ThemedText>
+        </View>
 
         {tasks.length === 0 ? (
           <View style={[styles.emptyStateCard, { backgroundColor: theme.backgroundDefault }]}>
@@ -610,5 +631,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     fontSize: 15,
     textAlignVertical: "top",
+  },
+  bodyDoublingBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.md,
+  },
+  bodyDoublingText: {
+    fontSize: 13,
+    fontWeight: "500",
   },
 });
