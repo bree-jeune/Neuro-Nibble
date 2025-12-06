@@ -34,7 +34,7 @@ const slides: OnboardingSlide[] = [
     title: "Break it into bites",
     subtitle: "2-10 minutes each",
     description:
-      "Turn any frozen task into tiny steps. Each bite is small enough to start, even on hard days.",
+      "Turn any frozen task into tiny bites. Each one is small enough to start, even on hard days.",
   },
   {
     id: "3",

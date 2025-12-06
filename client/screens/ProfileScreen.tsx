@@ -130,7 +130,7 @@ export default function ProfileScreen() {
         <ThemedText style={[styles.effortMessage, { color: theme.textSecondary }]}>
           {daysActiveThisWeek > 0
             ? `You showed up ${daysActiveThisWeek} day${daysActiveThisWeek !== 1 ? "s" : ""} this week`
-            : "Every small step counts"}
+            : "Every small bite counts"}
         </ThemedText>
 
         <View style={styles.weeklyChart}>
@@ -165,7 +165,7 @@ export default function ProfileScreen() {
               {completedSteps}
             </ThemedText>
             <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
-              Steps done
+              Bites done
             </ThemedText>
           </View>
           <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>

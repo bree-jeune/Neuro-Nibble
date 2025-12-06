@@ -222,7 +222,7 @@ export default function BreakItDownScreen() {
 
         <View style={[styles.workFooter, { paddingBottom: insets.bottom + Spacing.lg }]}>
           <ThemedText style={[styles.permissionText, { color: theme.textSecondary }]}>
-            You can stop after this step. That still counts.
+            You can stop after this bite. That still counts.
           </ThemedText>
         </View>
       </View>
@@ -295,7 +295,7 @@ export default function BreakItDownScreen() {
           Break it into bites
         </ThemedText>
         <ThemedText style={[styles.sectionHint, { color: theme.textSecondary }]}>
-          Each step should take 2-10 minutes
+          Each bite should take 2-10 minutes
         </ThemedText>
         
         <View style={styles.addStepCard}>
@@ -308,7 +308,7 @@ export default function BreakItDownScreen() {
                 borderColor: theme.border,
               },
             ]}
-            placeholder="What's the tiniest first step?"
+            placeholder="What's the tiniest first bite?"
             placeholderTextColor={theme.textSecondary}
             value={newStepText}
             onChangeText={setNewStepText}
@@ -449,7 +449,7 @@ export default function BreakItDownScreen() {
 
       <View style={styles.permissionContainer}>
         <ThemedText style={[styles.permissionText, { color: theme.textSecondary }]}>
-          You can stop after the first step. That still counts.
+          You can stop after the first bite. That still counts.
         </ThemedText>
       </View>
     </KeyboardAwareScrollViewCompat>

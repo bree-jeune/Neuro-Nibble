@@ -37,7 +37,7 @@ export const getRoomConfig = (room: WeeklyRoom) => {
         label: "Build Week",
         mantra: "Small momentum compounds",
         icon: "layers" as const,
-        description: "Ready for growth - one small step at a time",
+        description: "Ready for growth - one small bite at a time",
       };
     case "repair":
       return {
