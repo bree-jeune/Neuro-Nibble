@@ -12,6 +12,7 @@ import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollV
 import { WeeklyRoomCard } from "@/components/WeeklyRoomCard";
 import { SwipeableThoughtCard } from "@/components/SwipeableThoughtCard";
 import { DopamineVendingMachine } from "@/components/DopamineVendingMachine";
+import { BreathingPacer } from "@/components/BreathingPacer";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { DynamicFooter } from "@/components/DynamicFooter";
@@ -140,6 +141,18 @@ export default function ReflectScreen() {
           </View>
         </View>
 
+        <View style={[styles.card, styles.breatheCard, { backgroundColor: theme.backgroundDefault }]}>
+          <ThemedText type="h4" style={styles.cardTitle}>
+            Take a Breath
+          </ThemedText>
+          <ThemedText style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
+            Ground yourself before diving in.
+          </ThemedText>
+          <View style={styles.breatheContainer}>
+            <BreathingPacer size="large" />
+          </View>
+        </View>
+
         <View style={[styles.card, styles.mainCard, { backgroundColor: theme.backgroundDefault }]}>
           <ThemedText type="h3" style={styles.cardTitle}>
             Brain Dump
@@ -261,6 +274,14 @@ const styles = StyleSheet.create({
   },
   mainCard: {
     paddingVertical: Spacing.xl,
+  },
+  breatheCard: {
+    alignItems: "center",
+  },
+  breatheContainer: {
+    paddingVertical: Spacing.xl,
+    alignItems: "center",
+    justifyContent: "center",
   },
   cardTitle: {
     marginBottom: Spacing.xs,

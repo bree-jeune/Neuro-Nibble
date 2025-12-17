@@ -1,12 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
-import { View, StyleSheet } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import { View, StyleSheet, Pressable } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withRepeat,
-  withSequence,
   withTiming,
+  withSequence,
   cancelAnimation,
   runOnJS,
   Easing,
@@ -18,112 +16,203 @@ import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { BorderRadius, Spacing } from "@/constants/theme";
 
-const SHAPE_SIZE = 56;
-const BREATHE_DURATION = 4000;
+const SHAPE_SIZE = 72;
+const INHALE_DURATION = 4000;
+const HOLD_DURATION = 2000;
+const EXHALE_DURATION = 4000;
+const TOTAL_CYCLE = INHALE_DURATION + HOLD_DURATION + EXHALE_DURATION;
 
-export function BreathingPacer() {
+type BreathPhase = "idle" | "inhale" | "hold" | "exhale" | "completing";
+
+interface BreathingPacerProps {
+  size?: "small" | "large";
+  showLabel?: boolean;
+}
+
+export function BreathingPacer({ size = "small", showLabel = true }: BreathingPacerProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
-  const opacity = useSharedValue(0.7);
-  const isBreathing = useRef(false);
-  const hapticInterval = useRef<NodeJS.Timeout | null>(null);
+  const opacity = useSharedValue(0.6);
+  const [phase, setPhase] = useState<BreathPhase>("idle");
   const [isActive, setIsActive] = useState(false);
+  const cycleRef = useRef<NodeJS.Timeout | null>(null);
+  const shouldStopRef = useRef(false);
+  const currentPhaseRef = useRef<BreathPhase>("idle");
 
-  const startHapticLoop = () => {
-    if (hapticInterval.current) {
-      clearInterval(hapticInterval.current);
-    }
+  const shapeSize = size === "large" ? 120 : SHAPE_SIZE;
+  const iconSize = size === "large" ? 36 : 24;
+
+  const updatePhase = useCallback((newPhase: BreathPhase) => {
+    currentPhaseRef.current = newPhase;
+    setPhase(newPhase);
+  }, []);
+
+  const runBreathCycle = useCallback(() => {
+    // Inhale
+    updatePhase("inhale");
     triggerHaptic("light");
-    hapticInterval.current = setInterval(() => {
-      if (isBreathing.current) {
+
+    scale.value = withTiming(1.5, {
+      duration: INHALE_DURATION,
+      easing: Easing.inOut(Easing.ease)
+    });
+    opacity.value = withTiming(1, {
+      duration: INHALE_DURATION,
+      easing: Easing.inOut(Easing.ease)
+    });
+
+    // Schedule hold phase
+    cycleRef.current = setTimeout(() => {
+      updatePhase("hold");
+      triggerHaptic("medium");
+
+      // Schedule exhale phase
+      cycleRef.current = setTimeout(() => {
+        updatePhase("exhale");
         triggerHaptic("light");
-      }
-    }, BREATHE_DURATION * 2);
-  };
 
-  const stopHapticLoop = () => {
-    if (hapticInterval.current) {
-      clearInterval(hapticInterval.current);
-      hapticInterval.current = null;
-    }
-  };
+        scale.value = withTiming(1, {
+          duration: EXHALE_DURATION,
+          easing: Easing.inOut(Easing.ease)
+        });
+        opacity.value = withTiming(0.6, {
+          duration: EXHALE_DURATION,
+          easing: Easing.inOut(Easing.ease)
+        });
 
-  const startBreathing = () => {
-    isBreathing.current = true;
+        // Schedule next cycle or completion
+        cycleRef.current = setTimeout(() => {
+          if (shouldStopRef.current) {
+            // Completing - gracefully end
+            updatePhase("idle");
+            setIsActive(false);
+            shouldStopRef.current = false;
+            triggerHaptic("success");
+          } else {
+            // Continue to next cycle
+            runBreathCycle();
+          }
+        }, EXHALE_DURATION);
+      }, HOLD_DURATION);
+    }, INHALE_DURATION);
+  }, [scale, opacity, updatePhase]);
+
+  const startBreathing = useCallback(() => {
+    if (isActive) return;
+
+    shouldStopRef.current = false;
     setIsActive(true);
-    startHapticLoop();
-    
-    scale.value = withRepeat(
-      withSequence(
-        withTiming(1.5, { duration: BREATHE_DURATION, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: BREATHE_DURATION, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      false
-    );
-    
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: BREATHE_DURATION, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.7, { duration: BREATHE_DURATION, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      false
-    );
-  };
+    triggerHaptic("medium");
+    runBreathCycle();
+  }, [isActive, runBreathCycle]);
 
-  const stopBreathing = () => {
-    isBreathing.current = false;
-    setIsActive(false);
-    stopHapticLoop();
+  const requestStop = useCallback(() => {
+    if (!isActive) return;
+
+    // Signal that we want to stop, but let the current cycle complete
+    shouldStopRef.current = true;
+    updatePhase("completing");
+  }, [isActive, updatePhase]);
+
+  const forceStop = useCallback(() => {
+    // Emergency stop - clear everything
+    if (cycleRef.current) {
+      clearTimeout(cycleRef.current);
+      cycleRef.current = null;
+    }
+    shouldStopRef.current = false;
     cancelAnimation(scale);
     cancelAnimation(opacity);
     scale.value = withTiming(1, { duration: 300 });
-    opacity.value = withTiming(0.7, { duration: 300 });
-  };
+    opacity.value = withTiming(0.6, { duration: 300 });
+    updatePhase("idle");
+    setIsActive(false);
+  }, [scale, opacity, updatePhase]);
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      stopHapticLoop();
+      if (cycleRef.current) {
+        clearTimeout(cycleRef.current);
+      }
     };
   }, []);
 
-  const longPressGesture = Gesture.LongPress()
-    .minDuration(200)
-    .onStart(() => {
-      runOnJS(startBreathing)();
-    })
-    .onEnd(() => {
-      runOnJS(stopBreathing)();
-    })
-    .onFinalize(() => {
-      runOnJS(stopBreathing)();
-    });
+  const handlePress = useCallback(() => {
+    if (isActive) {
+      requestStop();
+    } else {
+      startBreathing();
+    }
+  }, [isActive, startBreathing, requestStop]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
     opacity: opacity.value,
   }));
 
+  const getPhaseText = () => {
+    switch (phase) {
+      case "inhale":
+        return "Breathe in...";
+      case "hold":
+        return "Hold...";
+      case "exhale":
+        return "Breathe out...";
+      case "completing":
+        return "Finishing breath...";
+      default:
+        return "Tap to breathe";
+    }
+  };
+
+  const getPhaseIcon = (): keyof typeof Feather.glyphMap => {
+    switch (phase) {
+      case "inhale":
+        return "arrow-up";
+      case "hold":
+        return "pause";
+      case "exhale":
+        return "arrow-down";
+      default:
+        return "wind";
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <GestureDetector gesture={longPressGesture}>
+      <Pressable onPress={handlePress} onLongPress={forceStop}>
         <Animated.View
           style={[
             styles.shape,
-            { backgroundColor: theme.primary },
+            {
+              backgroundColor: theme.primary,
+              width: shapeSize,
+              height: shapeSize,
+              borderRadius: shapeSize / 2,
+            },
             animatedStyle,
           ]}
         >
-          <Feather name="wind" size={24} color="#FFFFFF" />
+          <Feather name={getPhaseIcon()} size={iconSize} color="#FFFFFF" />
         </Animated.View>
-      </GestureDetector>
-      <ThemedText
-        type="small"
-        style={[styles.hint, { color: theme.textSecondary }]}
-      >
-        {isActive ? "Breathe..." : "Hold to breathe"}
-      </ThemedText>
+      </Pressable>
+      {showLabel && (
+        <ThemedText
+          type="small"
+          style={[styles.hint, { color: theme.textSecondary }]}
+        >
+          {getPhaseText()}
+        </ThemedText>
+      )}
+      {isActive && phase !== "completing" && (
+        <ThemedText
+          type="micro"
+          style={[styles.stopHint, { color: theme.textSecondary }]}
+        >
+          Tap to stop after this breath
+        </ThemedText>
+      )}
     </View>
   );
 }
@@ -131,16 +220,19 @@ export function BreathingPacer() {
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
+    gap: Spacing.xs,
   },
   shape: {
-    width: SHAPE_SIZE,
-    height: SHAPE_SIZE,
-    borderRadius: BorderRadius.lg,
     alignItems: "center",
     justifyContent: "center",
   },
   hint: {
-    marginTop: Spacing.xs,
-    fontSize: 10,
+    marginTop: Spacing.sm,
+    textAlign: "center",
+  },
+  stopHint: {
+    fontStyle: "italic",
+    opacity: 0.7,
+    textAlign: "center",
   },
 });
