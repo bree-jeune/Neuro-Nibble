@@ -181,10 +181,11 @@ export default function HomeScreen() {
     return new Date().toLocaleDateString("en-US", { weekday: "long" });
   };
 
-  const getRandomDopamineItem = () => {
+  // Get a stable random dopamine item for this render (changes when dopamineMenu changes)
+  const randomDopamineItem = useMemo(() => {
     if (dopamineMenu.length === 0) return null;
     return dopamineMenu[Math.floor(Math.random() * dopamineMenu.length)];
-  };
+  }, [dopamineMenu]);
 
   return (
     <>
@@ -317,10 +318,10 @@ export default function HomeScreen() {
               </View>
             ) : null}
 
-            {getRandomDopamineItem() ? (
+            {randomDopamineItem ? (
               <View style={[styles.rewardCard, { backgroundColor: theme.roomGentle }]}>
                 <ThemedText style={styles.rewardTitle}>Treat yourself to:</ThemedText>
-                <ThemedText style={styles.rewardItem}>{getRandomDopamineItem()}</ThemedText>
+                <ThemedText style={styles.rewardItem}>{randomDopamineItem.text}</ThemedText>
               </View>
             ) : null}
 
