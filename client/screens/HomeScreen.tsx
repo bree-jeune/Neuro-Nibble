@@ -293,10 +293,17 @@ export default function HomeScreen() {
 
         {bookendCompleted ? (
           <View style={[styles.dayEndedCard, { backgroundColor: theme.backgroundDefault }]}>
-            <Feather name="check-circle" size={20} color={theme.success} />
-            <ThemedText style={styles.dayEndedText}>
-              Day ended. Rest well.
-            </ThemedText>
+            <View style={styles.dayEndedLeft}>
+              <Feather name="check-circle" size={20} color={theme.success} />
+              <ThemedText style={styles.dayEndedText}>
+                Day ended. Rest well.
+              </ThemedText>
+            </View>
+            <Pressable onPress={() => restoreBookendState(false, "")}>
+              <ThemedText style={[styles.dayEndedUndo, { color: theme.textSecondary }]}>
+                undo
+              </ThemedText>
+            </Pressable>
           </View>
         ) : null}
 
@@ -499,6 +506,16 @@ const styles = StyleSheet.create({
   },
   dayEndedText: {
     fontSize: 15,
+    fontStyle: "italic",
+  },
+  dayEndedLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    flex: 1,
+  },
+  dayEndedUndo: {
+    fontSize: 13,
     fontStyle: "italic",
   },
   endDayIcon: {
