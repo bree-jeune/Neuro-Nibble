@@ -242,21 +242,18 @@ export default function HomeScreen() {
 
         {tasks.length === 0 ? (
           <View style={[styles.emptyStateCard, { backgroundColor: theme.backgroundDefault }]}>
-            <View style={[styles.emptyStateIcon, { backgroundColor: theme.backgroundSecondary }]}>
-              <Feather name="pause-circle" size={32} color={theme.primary} />
-            </View>
             <ThemedText type="h3" style={styles.emptyStateTitle}>
-              What's freezing you?
+              Ready when you are.
             </ThemedText>
             <ThemedText style={[styles.emptyStateText, { color: theme.textSecondary }]}>
-              Add something that feels stuck. We'll break it into tiny bites you can actually start.
+              When something feels stuck, we'll break it into tiny bites together.
             </ThemedText>
             <Pressable
               onPress={() => navigation.navigate("BreakItDown")}
               style={[styles.emptyStateButton, { backgroundColor: theme.primary }]}
             >
               <Feather name="plus" size={18} color="#FFFFFF" />
-              <ThemedText style={styles.emptyStateButtonText}>Break down a task</ThemedText>
+              <ThemedText style={styles.emptyStateButtonText}>Start with one thing</ThemedText>
             </Pressable>
           </View>
         ) : recentTasks.length > 0 ? (
@@ -282,7 +279,7 @@ export default function HomeScreen() {
           />
         ) : null}
 
-        {bookendCompleted || hasTouchedTasksToday ? (
+        {hasTouchedTasksToday ? (
           <Pressable
             onPress={openEndDayModal}
             style={[styles.endDayButton, { backgroundColor: theme.backgroundDefault }]}
