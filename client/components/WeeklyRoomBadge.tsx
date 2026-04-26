@@ -77,7 +77,12 @@ export function WeeklyRoomBadge({ room, interactive = true }: WeeklyRoomBadgePro
             <Feather name={config.icon} size={18} color={theme.text} />
             <ThemedText style={styles.label}>{config.label}</ThemedText>
             {interactive ? (
-              <Feather name="chevron-down" size={16} color={theme.textSecondary} style={styles.chevron} />
+              <View style={styles.editHint}>
+                <Feather name="edit-2" size={14} color={theme.textSecondary} />
+                <ThemedText style={[styles.editHintLabel, { color: theme.textSecondary }]}>
+                  change
+                </ThemedText>
+              </View>
             ) : null}
           </View>
           <ThemedText style={[styles.mantra, { color: theme.textSecondary }]}>
@@ -162,8 +167,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     flex: 1,
   },
-  chevron: {
+  editHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     marginLeft: "auto",
+  },
+  editHintLabel: {
+    fontSize: 11,
   },
   mantra: {
     fontStyle: "italic",

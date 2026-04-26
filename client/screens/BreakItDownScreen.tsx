@@ -23,6 +23,155 @@ import type { EnergyLevel, Step } from "@/lib/types";
 
 type ViewMode = "minimal" | "edit" | "work";
 
+type CategoryKey = "work" | "home" | "health" | "money" | "people" | "creative" | "other";
+
+interface CategoryConfig {
+  key: CategoryKey;
+  label: string;
+  icon: keyof typeof Feather.glyphMap;
+}
+
+const CATEGORIES: CategoryConfig[] = [
+  { key: "work", label: "Work", icon: "briefcase" },
+  { key: "home", label: "Home", icon: "home" },
+  { key: "health", label: "Health", icon: "heart" },
+  { key: "money", label: "Money", icon: "dollar-sign" },
+  { key: "people", label: "People", icon: "users" },
+  { key: "creative", label: "Creative", icon: "edit-3" },
+  { key: "other", label: "Other", icon: "more-horizontal" },
+];
+
+const SUGGESTIONS_BY_CATEGORY: Record<Exclude<CategoryKey, "other">, string[]> = {
+  work: [
+    "Reply to an email",
+    "Prepare for a meeting",
+    "Finish a report",
+    "Make a phone call",
+    "Deal with my inbox",
+  ],
+  home: [
+    "Clean a space",
+    "Do laundry",
+    "Cook something",
+    "Run errands",
+    "Deal with dishes",
+  ],
+  health: [
+    "Schedule an appointment",
+    "Take medication",
+    "Go for a walk",
+    "Drink water",
+    "Rest properly",
+  ],
+  money: [
+    "Pay a bill",
+    "Check my bank",
+    "Deal with paperwork",
+    "Make a budget",
+    "Handle an invoice",
+  ],
+  people: [
+    "Reply to a message",
+    "Make a call I've been avoiding",
+    "Send a thank you",
+    "Apologize to someone",
+    "Check in on someone",
+  ],
+  creative: [
+    "Work on my project",
+    "Write something",
+    "Make something",
+    "Practice a skill",
+    "Capture an idea",
+  ],
+};
+
+const generateBitesForEnergy = (taskTitle: string, energy: EnergyLevel): Step[] => {
+  // Energy → max minutes per bite + count range
+  const profile =
+    energy === "low"
+      ? { maxMin: 2, count: 2 }
+      : energy === "medium"
+        ? { maxMin: 5, count: 3 }
+        : { maxMin: 10, count: 4 };
+
+  const lower = taskTitle.toLowerCase();
+
+  let templated: { text: string; minutes: number }[] | null = null;
+  if (/email|inbox|message/.test(lower)) {
+    templated = [
+      { text: "Open the inbox", minutes: 2 },
+      { text: "Read and pick one to reply to", minutes: profile.maxMin },
+      { text: "Send the reply", minutes: profile.maxMin },
+      { text: "Close it for now", minutes: 2 },
+    ];
+  } else if (/laundry|wash/.test(lower)) {
+    templated = [
+      { text: "Gather what needs washing", minutes: 2 },
+      { text: "Load the machine", minutes: profile.maxMin },
+      { text: "Set a reminder for later", minutes: 2 },
+      { text: "Move to dryer when ready", minutes: profile.maxMin },
+    ];
+  } else if (/clean|tidy|dishes|space|room/.test(lower)) {
+    templated = [
+      { text: "Pick up 5 items", minutes: 2 },
+      { text: "Clear one surface", minutes: profile.maxMin },
+      { text: "Put 3 things back where they belong", minutes: profile.maxMin },
+      { text: "Step back and notice", minutes: 2 },
+    ];
+  } else if (/call|phone/.test(lower)) {
+    templated = [
+      { text: "Write down what you need to say", minutes: 2 },
+      { text: "Find the number", minutes: 2 },
+      { text: "Make the call", minutes: profile.maxMin },
+    ];
+  } else if (/bill|pay|invoice|bank|money|budget/.test(lower)) {
+    templated = [
+      { text: "Find the document or login", minutes: 2 },
+      { text: "Open and check the amount", minutes: profile.maxMin },
+      { text: "Submit the payment or note", minutes: profile.maxMin },
+    ];
+  } else if (/walk|exercise|stretch/.test(lower)) {
+    templated = [
+      { text: "Put on your shoes", minutes: 2 },
+      { text: "Step outside", minutes: 2 },
+      { text: "Walk for a few minutes", minutes: profile.maxMin },
+    ];
+  } else if (/write|draft|report|note|idea/.test(lower)) {
+    templated = [
+      { text: "Open the document", minutes: 2 },
+      { text: "Write the first sentence", minutes: profile.maxMin },
+      { text: "Add one more sentence", minutes: profile.maxMin },
+      { text: "Save and step away", minutes: 2 },
+    ];
+  } else if (/appointment|schedule|book/.test(lower)) {
+    templated = [
+      { text: "Find the contact info", minutes: 2 },
+      { text: "Check your calendar", minutes: 2 },
+      { text: "Book the slot", minutes: profile.maxMin },
+    ];
+  }
+
+  const generic = [
+    { text: `Open or find ${taskTitle.toLowerCase()}`, minutes: 2 },
+    { text: "Do the first small part", minutes: profile.maxMin },
+    { text: "Check what's needed next", minutes: 2 },
+    { text: "Close out for now", minutes: 2 },
+  ];
+
+  const source = templated ?? generic;
+  const sliced = source
+    .slice(0, profile.count)
+    .map((s) => ({ ...s, minutes: Math.min(s.minutes, profile.maxMin) }));
+
+  return sliced.map((s, i) => ({
+    id: `${Date.now()}_${i}`,
+    text: s.text,
+    minutes: s.minutes,
+    completed: false,
+  }));
+};
+
 const getTemplateSteps = (taskTitle: string): Step[] => {
   const templates: Record<string, { text: string; minutes: number }[]> = {
     "Reply to emails": [
@@ -109,6 +258,10 @@ export default function BreakItDownScreen() {
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [pendingArchivePrompt, setPendingArchivePrompt] = useState(false);
   const [showBiteInspiration, setShowBiteInspiration] = useState(false);
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
+  const [wizardCategory, setWizardCategory] = useState<CategoryKey | null>(null);
+  const [wizardTaskText, setWizardTaskText] = useState("");
+  const [useMinimalFallback, setUseMinimalFallback] = useState(false);
 
   const quickChips = [
     "Email",
@@ -194,6 +347,43 @@ export default function BreakItDownScreen() {
 
     setViewMode("work");
   }, [canStartMinimal, title, firstStepText, addTask]);
+
+  const handleWizardCategorySelect = useCallback((key: CategoryKey) => {
+    triggerHaptic("selection");
+    setWizardCategory(key);
+    setTimeout(() => {
+      setWizardStep(2);
+    }, 300);
+  }, []);
+
+  const handleWizardTaskNext = useCallback(() => {
+    if (wizardTaskText.trim().length < 2) return;
+    triggerHaptic("light");
+    setTitle(wizardTaskText.trim());
+    setWizardStep(3);
+  }, [wizardTaskText]);
+
+  const handleWizardEnergySelect = useCallback((level: EnergyLevel) => {
+    const taskTitle = wizardTaskText.trim();
+    if (!taskTitle) return;
+    triggerHaptic("success");
+
+    const newSteps = generateBitesForEnergy(taskTitle, level);
+    setSteps(newSteps);
+    setEnergyLevel(level);
+    setTitle(taskTitle);
+
+    const newTaskId = `task_${Date.now()}`;
+    addTask({
+      id: newTaskId,
+      title: taskTitle,
+      steps: newSteps,
+      energyLevel: level,
+    });
+    setActiveTaskId(newTaskId);
+
+    setViewMode("work");
+  }, [wizardTaskText, addTask]);
 
   const handleSave = useCallback(() => {
     if (!canSave) return;
@@ -550,7 +740,7 @@ export default function BreakItDownScreen() {
     );
   }
 
-  if (viewMode === "minimal") {
+  if (viewMode === "minimal" && useMinimalFallback) {
     return (
       <KeyboardAwareScrollViewCompat
         style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
@@ -567,8 +757,8 @@ export default function BreakItDownScreen() {
             <ThemedText type="h3" style={styles.sectionTitle}>
               What's freezing you?
             </ThemedText>
-            <ScrollView 
-              horizontal 
+            <ScrollView
+              horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.quickChipsContainer}
               style={styles.quickChipsScroll}
@@ -582,15 +772,15 @@ export default function BreakItDownScreen() {
                   }}
                   style={[
                     styles.quickChip,
-                    { 
+                    {
                       backgroundColor: title === chip ? theme.primary : theme.backgroundDefault,
                     },
                   ]}
                 >
-                  <ThemedText 
+                  <ThemedText
                     style={[
-                      styles.quickChipText, 
-                      { color: title === chip ? "#FFFFFF" : theme.text }
+                      styles.quickChipText,
+                      { color: title === chip ? "#FFFFFF" : theme.text },
                     ]}
                   >
                     {chip}
@@ -641,13 +831,13 @@ export default function BreakItDownScreen() {
               disabled={!canStartMinimal}
               style={[
                 styles.startButton,
-                { 
+                {
                   backgroundColor: canStartMinimal ? theme.primary : theme.backgroundDefault,
                 },
               ]}
             >
-              <ThemedText 
-                style={{ 
+              <ThemedText
+                style={{
                   color: canStartMinimal ? "#FFFFFF" : theme.textSecondary,
                   fontWeight: "600",
                   fontSize: 16,
@@ -656,12 +846,12 @@ export default function BreakItDownScreen() {
                 Start This Bite
               </ThemedText>
             </Pressable>
-            
+
             <ThemedText style={[styles.minimalHint, { color: theme.textSecondary }]}>
               You can add more bites after. Just start with one.
             </ThemedText>
-            
-            <Pressable 
+
+            <Pressable
               onPress={() => setViewMode("edit")}
               style={styles.advancedLink}
             >
@@ -669,8 +859,254 @@ export default function BreakItDownScreen() {
                 I want to plan more bites first
               </ThemedText>
             </Pressable>
+
+            <Pressable
+              onPress={() => {
+                triggerHaptic("selection");
+                setUseMinimalFallback(false);
+                setWizardStep(1);
+              }}
+              style={styles.advancedLink}
+            >
+              <ThemedText style={{ color: theme.textSecondary, fontSize: 13 }}>
+                Back to guided flow
+              </ThemedText>
+            </Pressable>
           </View>
         </View>
+      </KeyboardAwareScrollViewCompat>
+    );
+  }
+
+  if (viewMode === "minimal") {
+    const suggestions =
+      wizardCategory && wizardCategory !== "other"
+        ? SUGGESTIONS_BY_CATEGORY[wizardCategory]
+        : [];
+    const canAdvanceFromTask = wizardTaskText.trim().length >= 2;
+
+    return (
+      <KeyboardAwareScrollViewCompat
+        style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
+        contentContainerStyle={{
+          paddingTop: headerHeight + Spacing.xl,
+          paddingBottom: insets.bottom + Spacing.xl,
+          paddingHorizontal: Spacing.lg,
+          flexGrow: 1,
+        }}
+        scrollIndicatorInsets={{ bottom: insets.bottom }}
+      >
+        <View style={styles.wizardProgress}>
+          {[1, 2, 3].map((n) => (
+            <View
+              key={n}
+              style={[
+                styles.wizardDot,
+                {
+                  backgroundColor:
+                    n === wizardStep ? theme.primary : theme.backgroundSecondary,
+                  width: n === wizardStep ? 24 : 8,
+                },
+              ]}
+            />
+          ))}
+        </View>
+
+        {wizardStep === 1 ? (
+          <View style={styles.wizardSection}>
+            <ThemedText type="h2" style={styles.wizardQuestion}>
+              What area of life is this about?
+            </ThemedText>
+            <View style={styles.categoryGrid}>
+              {CATEGORIES.map((cat) => {
+                const selected = wizardCategory === cat.key;
+                return (
+                  <Pressable
+                    key={cat.key}
+                    onPress={() => handleWizardCategorySelect(cat.key)}
+                    style={[
+                      styles.categoryCard,
+                      {
+                        backgroundColor: selected ? theme.primary : theme.backgroundDefault,
+                        borderColor: selected ? theme.primary : theme.border,
+                      },
+                    ]}
+                  >
+                    <Feather
+                      name={cat.icon}
+                      size={28}
+                      color={selected ? "#FFFFFF" : theme.primary}
+                    />
+                    <ThemedText
+                      style={[
+                        styles.categoryLabel,
+                        { color: selected ? "#FFFFFF" : theme.text },
+                      ]}
+                    >
+                      {cat.label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+
+        {wizardStep === 2 ? (
+          <View style={styles.wizardSection}>
+            <ThemedText type="h2" style={styles.wizardQuestion}>
+              What specifically is frozen?
+            </ThemedText>
+
+            {suggestions.length > 0 ? (
+              <View style={styles.suggestionList}>
+                {suggestions.map((suggestion) => {
+                  const selected = wizardTaskText === suggestion;
+                  return (
+                    <Pressable
+                      key={suggestion}
+                      onPress={() => {
+                        triggerHaptic("selection");
+                        setWizardTaskText(suggestion);
+                      }}
+                      style={[
+                        styles.suggestionChip,
+                        {
+                          backgroundColor: selected
+                            ? theme.primary
+                            : theme.backgroundDefault,
+                          borderColor: selected ? theme.primary : theme.border,
+                        },
+                      ]}
+                    >
+                      <ThemedText
+                        style={{
+                          color: selected ? "#FFFFFF" : theme.text,
+                          fontSize: 15,
+                          fontWeight: selected ? "600" : "400",
+                        }}
+                      >
+                        {suggestion}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+
+            <TextInput
+              style={[
+                styles.titleInput,
+                {
+                  backgroundColor: theme.inputBackground,
+                  color: theme.text,
+                  borderColor: theme.border,
+                  marginTop: suggestions.length > 0 ? Spacing.md : 0,
+                },
+              ]}
+              placeholder={
+                wizardCategory === "other"
+                  ? "Describe what's frozen..."
+                  : "Or describe it yourself..."
+              }
+              placeholderTextColor={theme.textSecondary}
+              value={wizardTaskText}
+              onChangeText={setWizardTaskText}
+              autoFocus={wizardCategory === "other"}
+            />
+
+            {canAdvanceFromTask ? (
+              <Pressable
+                onPress={handleWizardTaskNext}
+                style={[styles.wizardNextButton, { backgroundColor: theme.primary }]}
+              >
+                <ThemedText
+                  style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 16 }}
+                >
+                  Next →
+                </ThemedText>
+              </Pressable>
+            ) : null}
+
+            <Pressable
+              onPress={() => {
+                triggerHaptic("selection");
+                setUseMinimalFallback(true);
+                if (wizardTaskText.trim()) setTitle(wizardTaskText.trim());
+              }}
+              style={styles.escapeHatch}
+            >
+              <ThemedText style={{ color: theme.textSecondary, fontSize: 13 }}>
+                I'll fill this in myself
+              </ThemedText>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {wizardStep === 3 ? (
+          <View style={styles.wizardSection}>
+            <ThemedText type="h2" style={styles.wizardQuestion}>
+              How's your energy right now?
+            </ThemedText>
+            <View style={styles.energyCardRow}>
+              {(
+                [
+                  {
+                    level: "low" as EnergyLevel,
+                    label: "Low",
+                    hint: "Running on empty",
+                    icon: "feather" as const,
+                  },
+                  {
+                    level: "medium" as EnergyLevel,
+                    label: "Medium",
+                    hint: "Some capacity",
+                    icon: "sun" as const,
+                  },
+                  {
+                    level: "high" as EnergyLevel,
+                    label: "High",
+                    hint: "Ready to go",
+                    icon: "zap" as const,
+                  },
+                ]
+              ).map((opt) => (
+                <Pressable
+                  key={opt.level}
+                  onPress={() => handleWizardEnergySelect(opt.level)}
+                  style={[
+                    styles.energyWizardCard,
+                    {
+                      backgroundColor: theme.backgroundDefault,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                >
+                  <Feather name={opt.icon} size={28} color={theme.primary} />
+                  <ThemedText style={styles.energyWizardLabel}>{opt.label}</ThemedText>
+                  <ThemedText
+                    style={[styles.energyWizardHint, { color: theme.textSecondary }]}
+                  >
+                    {opt.hint}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+
+            <Pressable
+              onPress={() => {
+                triggerHaptic("selection");
+                setUseMinimalFallback(true);
+                if (wizardTaskText.trim()) setTitle(wizardTaskText.trim());
+              }}
+              style={styles.escapeHatch}
+            >
+              <ThemedText style={{ color: theme.textSecondary, fontSize: 13 }}>
+                I'll fill this in myself
+              </ThemedText>
+            </Pressable>
+          </View>
+        ) : null}
       </KeyboardAwareScrollViewCompat>
     );
   }
@@ -1277,5 +1713,85 @@ const styles = StyleSheet.create({
   inspirationToggleText: {
     fontSize: 14,
     fontWeight: "500",
+  },
+  wizardProgress: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: Spacing.xl,
+  },
+  wizardDot: {
+    height: 8,
+    borderRadius: 4,
+  },
+  wizardSection: {
+    flex: 1,
+  },
+  wizardQuestion: {
+    textAlign: "center",
+    marginBottom: Spacing.xl,
+  },
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: Spacing.sm,
+  },
+  categoryCard: {
+    width: "48%",
+    aspectRatio: 1.4,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  categoryLabel: {
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  suggestionList: {
+    gap: Spacing.sm,
+  },
+  suggestionChip: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  wizardNextButton: {
+    marginTop: Spacing.lg,
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: BorderRadius.sm,
+  },
+  escapeHatch: {
+    marginTop: Spacing.xl,
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+  },
+  energyCardRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  energyWizardCard: {
+    flex: 1,
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.xl,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  energyWizardLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  energyWizardHint: {
+    fontSize: 12,
+    textAlign: "center",
   },
 });
