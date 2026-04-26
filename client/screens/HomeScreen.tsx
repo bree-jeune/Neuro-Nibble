@@ -187,10 +187,6 @@ export default function HomeScreen() {
     return "evening";
   };
 
-  const getDayName = () => {
-    return new Date().toLocaleDateString("en-US", { weekday: "long" });
-  };
-
   const openEndDayModal = useCallback(() => {
     if (dopamineMenu.length > 0) {
       const pick = dopamineMenu[Math.floor(Math.random() * dopamineMenu.length)];
@@ -215,26 +211,31 @@ export default function HomeScreen() {
       >
         <View style={styles.greetingContainer}>
           <ThemedText type="h2" style={styles.greeting}>
-            {displayName ? `Good ${getGreeting()}, ${displayName}` : getDayName()}
+            {displayName ? `Good ${getGreeting()}, ${displayName}` : `Good ${getGreeting()}`}
           </ThemedText>
         </View>
 
-        <WeeklyRoomBadge room={weeklyRoom} />
+        <View style={styles.weeklyRoomWrapper}>
+          <WeeklyRoomBadge room={weeklyRoom} />
+        </View>
 
         <View style={[styles.bodyDoublingBanner, { backgroundColor: theme.primary + "10" }]}>
           <View style={styles.bodyDoublingLeft}>
-            <Animated.View 
+            <Animated.View
               style={[
-                styles.pulsingDot, 
-                { 
+                styles.pulsingDot,
+                {
                   backgroundColor: theme.success,
                   opacity: pulseAnim,
                 }
-              ]} 
+              ]}
             />
             <Feather name="users" size={16} color={theme.primary} />
           </View>
-          <ThemedText style={[styles.bodyDoublingText, { color: theme.primary }]}>
+          <ThemedText
+            style={[styles.bodyDoublingText, { color: theme.primary }]}
+            numberOfLines={2}
+          >
             {bodyDoublingCount} people working alongside you right now
           </ThemedText>
         </View>
@@ -458,7 +459,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   greetingContainer: {
-    marginBottom: Spacing.lg,
+    marginBottom: 0,
   },
   greeting: {
     marginBottom: Spacing.xs,
@@ -482,6 +483,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.sm,
+    marginTop: Spacing.lg,
+    marginRight: 72,
+  },
+  weeklyRoomWrapper: {
     marginTop: Spacing.lg,
   },
   endDayIcon: {
@@ -684,17 +689,17 @@ const styles = StyleSheet.create({
   bodyDoublingBanner: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     gap: Spacing.sm,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: BorderRadius.sm,
-    marginTop: Spacing.md,
+    marginTop: Spacing.lg,
   },
   bodyDoublingText: {
+    flex: 1,
     fontSize: 13,
     fontWeight: "500",
-    textAlign: "center",
+    textAlign: "left",
   },
   pulsingDot: {
     width: 8,
