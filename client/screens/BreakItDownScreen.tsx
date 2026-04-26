@@ -823,7 +823,7 @@ export default function BreakItDownScreen() {
               style={[
                 styles.startButton,
                 {
-                  backgroundColor: canStartMinimal ? theme.primary : theme.backgroundDefault,
+                  backgroundColor: canStartMinimal ? theme.primary : theme.backgroundSecondary,
                 },
               ]}
             >
