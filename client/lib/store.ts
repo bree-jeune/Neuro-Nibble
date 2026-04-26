@@ -6,7 +6,7 @@ import type { AppState, Task, EnergyLevel, WeeklyRoom, Step, DailyReflection, Th
 interface AppStore extends AppState {
   setEnergyLevel: (level: EnergyLevel) => void;
   setWeeklyRoom: (room: WeeklyRoom) => void;
-  addTask: (task: Omit<Task, "id" | "createdAt">) => void;
+  addTask: (task: Omit<Task, "id" | "createdAt"> & { id?: string }) => string;
   restoreTask: (task: Task, index?: number) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
@@ -65,12 +65,14 @@ export const useAppStore = create<AppStore>()(
       setWeeklyRoom: (room) => set({ weeklyRoom: room }),
       
       addTask: (task) => {
+        const id = task.id ?? Date.now().toString();
         const newTask: Task = {
           ...task,
-          id: Date.now().toString(),
+          id,
           createdAt: new Date().toISOString(),
         };
         set((state) => ({ tasks: [newTask, ...state.tasks] }));
+        return id;
       },
       
       restoreTask: (task, index) => {

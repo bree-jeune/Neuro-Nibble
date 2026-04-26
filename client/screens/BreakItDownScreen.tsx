@@ -86,14 +86,20 @@ export default function BreakItDownScreen() {
   const { tasks, addTask, updateTask, toggleStepComplete, restoreStep, archiveTask } = useAppStore();
   const showSnackbar = useSnackbarStore((s) => s.show);
   
-  const existingTask = route.params?.taskId 
-    ? tasks.find(t => t.id === route.params?.taskId)
+  const initialTaskId = route.params?.taskId ?? null;
+  const initialTask = initialTaskId
+    ? tasks.find(t => t.id === initialTaskId)
     : undefined;
 
-  const [viewMode, setViewMode] = useState<ViewMode>(existingTask ? "work" : "minimal");
-  const [title, setTitle] = useState(existingTask?.title || "");
-  const [steps, setSteps] = useState<Step[]>(existingTask?.steps || []);
-  const [energyLevel, setEnergyLevel] = useState<EnergyLevel>(existingTask?.energyLevel || "medium");
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(initialTaskId);
+  const existingTask = activeTaskId
+    ? tasks.find(t => t.id === activeTaskId)
+    : undefined;
+
+  const [viewMode, setViewMode] = useState<ViewMode>(initialTask ? "work" : "minimal");
+  const [title, setTitle] = useState(initialTask?.title || "");
+  const [steps, setSteps] = useState<Step[]>(initialTask?.steps || []);
+  const [energyLevel, setEnergyLevel] = useState<EnergyLevel>(initialTask?.energyLevel || "medium");
   const [firstStepText, setFirstStepText] = useState("");
   const [newStepText, setNewStepText] = useState("");
   const [newStepMinutes, setNewStepMinutes] = useState(5);
@@ -101,6 +107,7 @@ export default function BreakItDownScreen() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [pendingArchivePrompt, setPendingArchivePrompt] = useState(false);
   const [showBiteInspiration, setShowBiteInspiration] = useState(false);
 
   const quickChips = [
@@ -165,23 +172,26 @@ export default function BreakItDownScreen() {
     if (!canStartMinimal) return;
     
     triggerHaptic("success");
-    
+
     const newStep: Step = {
       id: Date.now().toString(),
       text: firstStepText.trim(),
       minutes: 5,
       completed: false,
     };
-    
+
     const newSteps = [newStep];
     setSteps(newSteps);
-    
+
+    const newTaskId = `task_${Date.now()}`;
     addTask({
+      id: newTaskId,
       title: title.trim(),
       steps: newSteps,
       energyLevel: "medium",
     });
-    
+    setActiveTaskId(newTaskId);
+
     setViewMode("work");
   }, [canStartMinimal, title, firstStepText, addTask]);
 
@@ -198,13 +208,16 @@ export default function BreakItDownScreen() {
         lastWorkedOn: new Date().toISOString(),
       });
     } else {
+      const newTaskId = `task_${Date.now()}`;
       addTask({
+        id: newTaskId,
         title: title.trim(),
         steps,
         energyLevel,
       });
+      setActiveTaskId(newTaskId);
     }
-    
+
     setViewMode("work");
   }, [canSave, existingTask, title, steps, energyLevel, addTask, updateTask]);
 
@@ -295,10 +308,11 @@ export default function BreakItDownScreen() {
     const allNowComplete = isCompletingStep && newSteps.every(s => s.completed);
     
     if (allNowComplete && existingTask && !existingTask.isArchived) {
-      setShowCompletionModal(true);
+      setPendingArchivePrompt(true);
+      setShowCelebration(true);
       return;
     }
-    
+
     if (!wasCompleted && !skipCelebration) {
       setShowCelebration(true);
     }
@@ -306,10 +320,15 @@ export default function BreakItDownScreen() {
 
   const handleCelebrationChoice = useCallback((keepGoing: boolean) => {
     setShowCelebration(false);
+    if (pendingArchivePrompt) {
+      setPendingArchivePrompt(false);
+      setShowCompletionModal(true);
+      return;
+    }
     if (!keepGoing) {
       navigation.goBack();
     }
-  }, [navigation]);
+  }, [navigation, pendingArchivePrompt]);
 
   if (viewMode === "work") {
     const incompleteSteps = steps.filter(s => !s.completed);

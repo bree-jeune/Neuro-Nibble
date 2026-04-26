@@ -34,6 +34,8 @@ export default function HomeScreen() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showEnergyCheck, setShowEnergyCheck] = useState(false);
   const [reflectionText, setReflectionText] = useState("");
+  const [endDayDopamineItem, setEndDayDopamineItem] = useState<string | null>(null);
+  const [bodyDoublingCount, setBodyDoublingCount] = useState(0);
 
   const { 
     energyLevel, 
@@ -80,7 +82,13 @@ export default function HomeScreen() {
     return Math.min(maxCount, Math.max(minCount, baseCount + variance));
   }, []);
   
-  const bodyDoublingCount = useMemo(() => getLiveUserCount(), [getLiveUserCount]);
+  useEffect(() => {
+    setBodyDoublingCount(getLiveUserCount());
+    const interval = setInterval(() => {
+      setBodyDoublingCount(getLiveUserCount());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [getLiveUserCount]);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -110,10 +118,12 @@ export default function HomeScreen() {
     return t.lastWorkedOn?.startsWith(today);
   });
 
-  const completedToday = tasks.filter((t) => {
+  const completedToday = useMemo(() => {
     const today = new Date().toISOString().split("T")[0];
-    return t.lastWorkedOn?.startsWith(today);
-  }).length;
+    return tasks.reduce((count, t) => {
+      return count + t.steps.filter((s) => s.completed && s.completedAt?.startsWith(today)).length;
+    }, 0);
+  }, [tasks]);
 
   const handleTaskPress = useCallback((task: Task) => {
     triggerHaptic("selection");
@@ -181,10 +191,15 @@ export default function HomeScreen() {
     return new Date().toLocaleDateString("en-US", { weekday: "long" });
   };
 
-  const getRandomDopamineItem = () => {
-    if (dopamineMenu.length === 0) return null;
-    return dopamineMenu[Math.floor(Math.random() * dopamineMenu.length)];
-  };
+  const openEndDayModal = useCallback(() => {
+    if (dopamineMenu.length > 0) {
+      const pick = dopamineMenu[Math.floor(Math.random() * dopamineMenu.length)];
+      setEndDayDopamineItem(pick.text);
+    } else {
+      setEndDayDopamineItem(null);
+    }
+    setShowEndDayModal(true);
+  }, [dopamineMenu]);
 
   return (
     <>
@@ -268,7 +283,7 @@ export default function HomeScreen() {
 
         {bookendCompleted || hasTouchedTasksToday ? (
           <Pressable
-            onPress={() => setShowEndDayModal(true)}
+            onPress={openEndDayModal}
             style={[styles.endDayButton, { backgroundColor: theme.backgroundDefault }]}
           >
             <View style={[styles.endDayIcon, { backgroundColor: theme.secondary }]}>
@@ -312,15 +327,15 @@ export default function HomeScreen() {
               <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>
                 <ThemedText style={styles.statNumber}>{completedToday}</ThemedText>
                 <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
-                  {completedToday === 1 ? "task touched today" : "tasks touched today"}
+                  {completedToday === 1 ? "bite done today" : "bites done today"}
                 </ThemedText>
               </View>
             ) : null}
 
-            {getRandomDopamineItem() ? (
+            {endDayDopamineItem ? (
               <View style={[styles.rewardCard, { backgroundColor: theme.roomGentle }]}>
                 <ThemedText style={styles.rewardTitle}>Treat yourself to:</ThemedText>
-                <ThemedText style={styles.rewardItem}>{getRandomDopamineItem()}</ThemedText>
+                <ThemedText style={styles.rewardItem}>{endDayDopamineItem}</ThemedText>
               </View>
             ) : null}
 
