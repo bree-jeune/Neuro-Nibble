@@ -14,7 +14,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { DynamicFooter } from "@/components/DynamicFooter";
 import { EnergyCard } from "@/components/EnergyCard";
-import { WeeklyRoomBadge } from "@/components/WeeklyRoomBadge";
+import { WeeklyRoomSection } from "@/components/WeeklyRoomSection";
 import { RecentTaskCard } from "@/components/RecentTaskCard";
 import { DailyBookend } from "@/components/DailyBookend";
 import { AudioToggleButton } from "@/components/AudioToggleButton";
@@ -197,6 +197,232 @@ export default function HomeScreen() {
     setShowEndDayModal(true);
   }, [dopamineMenu]);
 
+  const dopaminePreview = useMemo(() => {
+    if (dopamineMenu.length === 0) return [];
+    const shuffled = [...dopamineMenu].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, 2);
+  }, [dopamineMenu]);
+
+  const navigateToTab = useCallback((tabName: "ReflectTab" | "TasksTab") => {
+    triggerHaptic("selection");
+    const parent = navigation.getParent();
+    if (parent) {
+      (parent as unknown as { navigate: (name: string) => void }).navigate(tabName);
+    }
+  }, [navigation]);
+
+  const incompleteCount = useMemo(() => {
+    return tasks.filter(
+      (t) =>
+        !t.isArchived &&
+        t.steps.length > 0 &&
+        !t.steps.every((s) => s.completed),
+    ).length;
+  }, [tasks]);
+
+  const showBodyDoubling = weeklyRoom !== "chaos";
+  const showEndDayCard =
+    !bookendCompleted &&
+    (weeklyRoom === "chaos" || weeklyRoom === "gentle" || hasTouchedTasksToday);
+
+  const bodyDoublingCopy =
+    weeklyRoom === "gentle"
+      ? `${bodyDoublingCount} others resting alongside you`
+      : weeklyRoom === "build"
+        ? `${bodyDoublingCount} people building alongside you`
+        : weeklyRoom === "repair"
+          ? `${bodyDoublingCount} others catching up alongside you`
+          : `${bodyDoublingCount} working now`;
+
+  const renderRoomContent = () => {
+    if (weeklyRoom === "chaos") {
+      return (
+        <>
+          <View style={[styles.chaosCard, { backgroundColor: theme.backgroundDefault }]}>
+            <ThemedText type="h3" style={styles.chaosTitle}>
+              What's the ONE thing that would make today less bad?
+            </ThemedText>
+            <Pressable
+              onPress={() => navigation.navigate("BreakItDown")}
+              style={[styles.chaosButton, { backgroundColor: theme.primary }]}
+            >
+              <ThemedText style={styles.chaosButtonText}>Deal with one thing</ThemedText>
+            </Pressable>
+          </View>
+          <Pressable
+            onPress={() => navigateToTab("ReflectTab")}
+            style={styles.subtleLink}
+          >
+            <ThemedText style={[styles.subtleLinkText, { color: theme.textSecondary }]}>
+              Brain dump first →
+            </ThemedText>
+          </Pressable>
+        </>
+      );
+    }
+
+    if (weeklyRoom === "gentle") {
+      return (
+        <>
+          {recentTasks.length > 0 ? (
+            <View style={styles.section}>
+              <ThemedText type="h3" style={styles.sectionTitle}>
+                When you're ready
+              </ThemedText>
+              {recentTasks.map((task) => (
+                <RecentTaskCard
+                  key={task.id}
+                  task={task}
+                  onPress={() => handleTaskPress(task)}
+                />
+              ))}
+            </View>
+          ) : tasks.length === 0 ? (
+            <View style={[styles.emptyStateCard, { backgroundColor: theme.backgroundDefault }]}>
+              <ThemedText type="h3" style={styles.emptyStateTitle}>
+                Nothing's required today.
+              </ThemedText>
+              <ThemedText style={[styles.emptyStateText, { color: theme.textSecondary }]}>
+                If something pops up, we'll make it small enough to actually start.
+              </ThemedText>
+              <Pressable
+                onPress={() => navigation.navigate("BreakItDown")}
+                style={[styles.emptyStateButton, { backgroundColor: theme.primary }]}
+              >
+                <Feather name="plus" size={18} color="#FFFFFF" />
+                <ThemedText style={styles.emptyStateButtonText}>Add something tiny</ThemedText>
+              </Pressable>
+            </View>
+          ) : null}
+
+          <View style={[styles.dopamineCard, { backgroundColor: theme.backgroundDefault }]}>
+            <View style={styles.dopamineHeader}>
+              <Feather name="gift" size={18} color={theme.primary} />
+              <ThemedText style={styles.dopamineTitle}>Your dopamine menu</ThemedText>
+            </View>
+            <ThemedText style={[styles.dopamineSubtitle, { color: theme.textSecondary }]}>
+              Rest is productive.
+            </ThemedText>
+            {dopaminePreview.length > 0 ? (
+              <View style={styles.dopamineList}>
+                {dopaminePreview.map((item) => (
+                  <View
+                    key={item.id}
+                    style={[styles.dopaminePill, { backgroundColor: theme.roomGentle }]}
+                  >
+                    <ThemedText style={styles.dopaminePillText}>{item.text}</ThemedText>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Pressable
+                onPress={() => navigateToTab("ReflectTab")}
+                style={styles.dopamineEmptyLink}
+              >
+                <ThemedText style={[styles.dopamineEmptyText, { color: theme.primary }]}>
+                  Add some treats to your dopamine menu →
+                </ThemedText>
+              </Pressable>
+            )}
+          </View>
+        </>
+      );
+    }
+
+    if (weeklyRoom === "build") {
+      return (
+        <>
+          {recentTasks.length > 0 ? (
+            <View style={styles.section}>
+              <ThemedText type="h3" style={styles.sectionTitle}>
+                Keep the momentum
+              </ThemedText>
+              {recentTasks.map((task) => (
+                <RecentTaskCard
+                  key={task.id}
+                  task={task}
+                  onPress={() => handleTaskPress(task)}
+                />
+              ))}
+            </View>
+          ) : tasks.length === 0 ? (
+            <View style={[styles.emptyStateCard, { backgroundColor: theme.backgroundDefault }]}>
+              <ThemedText type="h3" style={styles.emptyStateTitle}>
+                Ready to build something?
+              </ThemedText>
+              <ThemedText style={[styles.emptyStateText, { color: theme.textSecondary }]}>
+                Pick one thing that's been waiting. We'll break it into pieces you can move.
+              </ThemedText>
+              <Pressable
+                onPress={() => navigation.navigate("BreakItDown")}
+                style={[styles.emptyStateButton, { backgroundColor: theme.primary }]}
+              >
+                <Feather name="plus" size={18} color="#FFFFFF" />
+                <ThemedText style={styles.emptyStateButtonText}>Start with one thing</ThemedText>
+              </Pressable>
+            </View>
+          ) : null}
+
+          <View style={[styles.statRow, { backgroundColor: theme.backgroundDefault }]}>
+            <View style={styles.statBlock}>
+              <ThemedText type="h2" style={{ color: theme.primary }}>
+                {incompleteCount}
+              </ThemedText>
+              <ThemedText style={[styles.statBlockLabel, { color: theme.textSecondary }]}>
+                {incompleteCount === 1 ? "active task" : "active tasks"}
+              </ThemedText>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+            <View style={styles.statBlock}>
+              <ThemedText type="h2" style={{ color: theme.primary }}>
+                {completedToday}
+              </ThemedText>
+              <ThemedText style={[styles.statBlockLabel, { color: theme.textSecondary }]}>
+                {completedToday === 1 ? "bite done today" : "bites done today"}
+              </ThemedText>
+            </View>
+          </View>
+        </>
+      );
+    }
+
+    // repair
+    return (
+      <>
+        {recentTasks.length > 0 ? (
+          <View style={styles.section}>
+            <ThemedText type="h3" style={styles.sectionTitle}>
+              Pick up where you left off
+            </ThemedText>
+            {recentTasks.map((task) => (
+              <RecentTaskCard
+                key={task.id}
+                task={task}
+                onPress={() => handleTaskPress(task)}
+              />
+            ))}
+          </View>
+        ) : null}
+
+        <Pressable
+          onPress={() => navigateToTab("TasksTab")}
+          style={[styles.repairCard, { backgroundColor: theme.backgroundDefault }]}
+        >
+          <View style={[styles.repairIcon, { backgroundColor: theme.roomRepair }]}>
+            <Feather name="rotate-ccw" size={20} color={theme.text} />
+          </View>
+          <View style={styles.repairTextContainer}>
+            <ThemedText style={styles.repairTitle}>What fell through?</ThemedText>
+            <ThemedText style={[styles.repairSubtitle, { color: theme.textSecondary }]}>
+              Review what's been waiting. No shame, just gentle catching up.
+            </ThemedText>
+          </View>
+          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+        </Pressable>
+      </>
+    );
+  };
+
   return (
     <>
       <ScrollView
@@ -216,64 +442,37 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.weeklyRoomWrapper}>
-          <WeeklyRoomBadge room={weeklyRoom} />
+          <WeeklyRoomSection room={weeklyRoom} />
         </View>
 
-        <View style={[styles.bodyDoublingPill, { backgroundColor: theme.primary + "15" }]}>
-          <Animated.View
-            style={[
-              styles.pulsingDot,
-              {
-                backgroundColor: theme.success,
-                opacity: pulseAnim,
-              },
-            ]}
-          />
-          <ThemedText style={[styles.bodyDoublingText, { color: theme.primary }]}>
-            {bodyDoublingCount} working now
-          </ThemedText>
-        </View>
-
-        {tasks.length === 0 ? (
-          <View style={[styles.emptyStateCard, { backgroundColor: theme.backgroundDefault }]}>
-            <ThemedText type="h3" style={styles.emptyStateTitle}>
-              Ready when you are.
+        {showBodyDoubling ? (
+          <View style={[styles.bodyDoublingPill, { backgroundColor: theme.primary + "15" }]}>
+            <Animated.View
+              style={[
+                styles.pulsingDot,
+                {
+                  backgroundColor: theme.success,
+                  opacity: pulseAnim,
+                },
+              ]}
+            />
+            <ThemedText style={[styles.bodyDoublingText, { color: theme.primary }]}>
+              {bodyDoublingCopy}
             </ThemedText>
-            <ThemedText style={[styles.emptyStateText, { color: theme.textSecondary }]}>
-              When something feels stuck, we'll break it into tiny bites together.
-            </ThemedText>
-            <Pressable
-              onPress={() => navigation.navigate("BreakItDown")}
-              style={[styles.emptyStateButton, { backgroundColor: theme.primary }]}
-            >
-              <Feather name="plus" size={18} color="#FFFFFF" />
-              <ThemedText style={styles.emptyStateButtonText}>Start with one thing</ThemedText>
-            </Pressable>
-          </View>
-        ) : recentTasks.length > 0 ? (
-          <View style={styles.section}>
-            <ThemedText type="h3" style={styles.sectionTitle}>
-              Pick up where you left off
-            </ThemedText>
-            {recentTasks.map((task) => (
-              <RecentTaskCard
-                key={task.id}
-                task={task}
-                onPress={() => handleTaskPress(task)}
-              />
-            ))}
           </View>
         ) : null}
 
+        {renderRoomContent()}
+
         {!bookendCompleted ? (
-          <DailyBookend 
+          <DailyBookend
             completed={bookendCompleted}
             onComplete={handleBookend}
             timeOfDay={getGreeting()}
           />
         ) : null}
 
-        {hasTouchedTasksToday && !bookendCompleted ? (
+        {showEndDayCard ? (
           <Pressable
             onPress={openEndDayModal}
             style={[styles.endDayButton, { backgroundColor: theme.backgroundDefault }]}
@@ -735,5 +934,123 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+  chaosCard: {
+    marginTop: Spacing.lg,
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+    gap: Spacing.lg,
+  },
+  chaosTitle: {
+    textAlign: "center",
+    lineHeight: 26,
+  },
+  chaosButton: {
+    width: "100%",
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+  },
+  chaosButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  subtleLink: {
+    marginTop: Spacing.md,
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+  },
+  subtleLinkText: {
+    fontSize: 14,
+    fontStyle: "italic",
+  },
+  dopamineCard: {
+    marginTop: Spacing.lg,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    gap: Spacing.sm,
+  },
+  dopamineHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  dopamineTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  dopamineSubtitle: {
+    fontSize: 13,
+    fontStyle: "italic",
+  },
+  dopamineList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  dopaminePill: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.full,
+  },
+  dopaminePillText: {
+    fontSize: 14,
+  },
+  dopamineEmptyLink: {
+    marginTop: Spacing.sm,
+  },
+  dopamineEmptyText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  statRow: {
+    marginTop: Spacing.lg,
+    flexDirection: "row",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+  },
+  statBlock: {
+    flex: 1,
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  statBlockLabel: {
+    fontSize: 12,
+    textAlign: "center",
+  },
+  statDivider: {
+    width: 1,
+    alignSelf: "stretch",
+    marginHorizontal: Spacing.md,
+  },
+  repairCard: {
+    marginTop: Spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+  },
+  repairIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.xs,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.md,
+  },
+  repairTextContainer: {
+    flex: 1,
+  },
+  repairTitle: {
+    fontSize: 16,
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  repairSubtitle: {
+    fontSize: 13,
   },
 });
