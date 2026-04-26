@@ -219,24 +219,18 @@ export default function HomeScreen() {
           <WeeklyRoomBadge room={weeklyRoom} />
         </View>
 
-        <View style={[styles.bodyDoublingBanner, { backgroundColor: theme.primary + "10" }]}>
-          <View style={styles.bodyDoublingLeft}>
-            <Animated.View
-              style={[
-                styles.pulsingDot,
-                {
-                  backgroundColor: theme.success,
-                  opacity: pulseAnim,
-                }
-              ]}
-            />
-            <Feather name="users" size={16} color={theme.primary} />
-          </View>
-          <ThemedText
-            style={[styles.bodyDoublingText, { color: theme.primary }]}
-            numberOfLines={2}
-          >
-            {bodyDoublingCount} people working alongside you right now
+        <View style={[styles.bodyDoublingPill, { backgroundColor: theme.primary + "15" }]}>
+          <Animated.View
+            style={[
+              styles.pulsingDot,
+              {
+                backgroundColor: theme.success,
+                opacity: pulseAnim,
+              },
+            ]}
+          />
+          <ThemedText style={[styles.bodyDoublingText, { color: theme.primary }]}>
+            {bodyDoublingCount} working now
           </ThemedText>
         </View>
 
@@ -279,7 +273,7 @@ export default function HomeScreen() {
           />
         ) : null}
 
-        {hasTouchedTasksToday ? (
+        {hasTouchedTasksToday && !bookendCompleted ? (
           <Pressable
             onPress={openEndDayModal}
             style={[styles.endDayButton, { backgroundColor: theme.backgroundDefault }]}
@@ -295,6 +289,15 @@ export default function HomeScreen() {
             </View>
             <Feather name="chevron-right" size={20} color={theme.textSecondary} />
           </Pressable>
+        ) : null}
+
+        {bookendCompleted ? (
+          <View style={[styles.dayEndedCard, { backgroundColor: theme.backgroundDefault }]}>
+            <Feather name="check-circle" size={20} color={theme.success} />
+            <ThemedText style={styles.dayEndedText}>
+              Day ended. Rest well.
+            </ThemedText>
+          </View>
         ) : null}
 
         <DynamicFooter screen="home" />
@@ -412,7 +415,7 @@ export default function HomeScreen() {
                 <Feather name="cloud" size={24} color={theme.text} />
                 <ThemedText style={styles.energyOptionLabel}>Low</ThemedText>
                 <ThemedText style={[styles.energyOptionHint, { color: theme.textSecondary }]}>
-                  Smallest bites
+                  Gentle
                 </ThemedText>
               </Pressable>
               
@@ -423,7 +426,7 @@ export default function HomeScreen() {
                 <Feather name="sun" size={24} color={theme.text} />
                 <ThemedText style={styles.energyOptionLabel}>Medium</ThemedText>
                 <ThemedText style={[styles.energyOptionHint, { color: theme.textSecondary }]}>
-                  Standard pace
+                  Steady
                 </ThemedText>
               </Pressable>
               
@@ -434,7 +437,7 @@ export default function HomeScreen() {
                 <Feather name="zap" size={24} color={theme.text} />
                 <ThemedText style={styles.energyOptionLabel}>High</ThemedText>
                 <ThemedText style={[styles.energyOptionHint, { color: theme.textSecondary }]}>
-                  Full steam
+                  Full
                 </ThemedText>
               </Pressable>
             </View>
@@ -485,6 +488,18 @@ const styles = StyleSheet.create({
   },
   weeklyRoomWrapper: {
     marginTop: Spacing.lg,
+  },
+  dayEndedCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.lg,
+  },
+  dayEndedText: {
+    fontSize: 15,
+    fontStyle: "italic",
   },
   endDayIcon: {
     width: 40,
@@ -648,8 +663,10 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   energyOption: {
-    flex: 1,
-    padding: Spacing.md,
+    minWidth: 90,
+    maxWidth: 110,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.sm,
     borderRadius: BorderRadius.sm,
     alignItems: "center",
     gap: Spacing.xs,
@@ -683,29 +700,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlignVertical: "top",
   },
-  bodyDoublingBanner: {
+  bodyDoublingPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.sm,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: BorderRadius.sm,
-    marginTop: Spacing.lg,
+    alignSelf: "flex-start",
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginTop: Spacing.sm,
   },
   bodyDoublingText: {
-    flex: 1,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "500",
-    textAlign: "left",
   },
   pulsingDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginRight: 6,
-  },
-  bodyDoublingLeft: {
-    flexDirection: "row",
-    alignItems: "center",
   },
 });

@@ -12,7 +12,6 @@ import { ThemedText } from "@/components/ThemedText";
 import { EnergySelector } from "@/components/EnergySelector";
 import { StepItem } from "@/components/StepItem";
 import { VisualTimer } from "@/components/VisualTimer";
-import { AudioToggleButton } from "@/components/AudioToggleButton";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { DynamicFooter } from "@/components/DynamicFooter";
@@ -153,9 +152,9 @@ const generateBitesForEnergy = (taskTitle: string, energy: EnergyLevel): Step[] 
   }
 
   const generic = [
-    { text: `Open or find ${taskTitle.toLowerCase()}`, minutes: 2 },
-    { text: "Do the first small part", minutes: profile.maxMin },
-    { text: "Check what's needed next", minutes: 2 },
+    { text: `Find or open: ${taskTitle}`, minutes: 2 },
+    { text: "Start the smallest piece", minutes: profile.maxMin },
+    { text: "Note what comes next", minutes: 2 },
     { text: "Close out for now", minutes: 2 },
   ];
 
@@ -297,27 +296,19 @@ export default function BreakItDownScreen() {
         </HeaderButton>
       ),
       headerRight: viewMode === "edit" ? () => (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <AudioToggleButton />
-          <HeaderButton 
-            onPress={handleSave}
-            disabled={!canSave}
-          >
-            <ThemedText style={{ color: canSave ? theme.primary : theme.textSecondary }}>
-              Save
-            </ThemedText>
-          </HeaderButton>
-        </View>
+        <HeaderButton
+          onPress={handleSave}
+          disabled={!canSave}
+        >
+          <ThemedText style={{ color: canSave ? theme.primary : theme.textSecondary }}>
+            Save
+          </ThemedText>
+        </HeaderButton>
       ) : viewMode === "work" ? () => (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <AudioToggleButton />
-          <HeaderButton onPress={() => setViewMode("edit")}>
-            <Feather name="edit-2" size={20} color={theme.primary} />
-          </HeaderButton>
-        </View>
-      ) : () => (
-        <AudioToggleButton />
-      ),
+        <HeaderButton onPress={() => setViewMode("edit")}>
+          <Feather name="edit-2" size={20} color={theme.primary} />
+        </HeaderButton>
+      ) : undefined,
     });
   }, [navigation, theme, canSave, title, steps, energyLevel, viewMode]);
 
