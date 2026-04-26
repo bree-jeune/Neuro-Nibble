@@ -53,8 +53,11 @@ export interface DopamineItem {
   cost: DopamineCost;
 }
 
+export type ColorSchemePreference = "light" | "dark" | "system";
+
 export interface AppState {
   energyLevel: EnergyLevel;
+  colorScheme: ColorSchemePreference;
   weeklyRoom: WeeklyRoom;
   tasks: Task[];
   brainDump: string;

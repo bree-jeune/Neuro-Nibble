@@ -38,6 +38,8 @@ export default function ProfileScreen() {
     setNotificationsEnabled,
     energyCheckInEnabled,
     setEnergyCheckInEnabled,
+    colorScheme,
+    setColorScheme,
     resetAllData,
     tasks,
     activeDays,
@@ -414,6 +416,45 @@ export default function ProfileScreen() {
             />
           </View>
 
+          <View style={styles.appearanceSection}>
+            <View style={styles.appearanceHeader}>
+              <Feather name="moon" size={20} color={theme.text} />
+              <ThemedText style={styles.settingLabel}>Appearance</ThemedText>
+            </View>
+            <View style={styles.appearanceOptions}>
+              {(["light", "dark", "system"] as const).map((option) => {
+                const selected = colorScheme === option;
+                const label = option === "light" ? "Light" : option === "dark" ? "Dark" : "System";
+                return (
+                  <Pressable
+                    key={option}
+                    onPress={() => {
+                      triggerHaptic("selection");
+                      setColorScheme(option);
+                    }}
+                    style={[
+                      styles.appearanceOption,
+                      {
+                        backgroundColor: selected ? theme.primary : theme.backgroundDefault,
+                        borderColor: selected ? theme.primary : theme.border,
+                      },
+                    ]}
+                  >
+                    <ThemedText
+                      style={{
+                        color: selected ? "#FFFFFF" : theme.text,
+                        fontWeight: selected ? "600" : "400",
+                        fontSize: 14,
+                      }}
+                    >
+                      {label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
           <View style={styles.modalDangerSection}>
             <Pressable
               onPress={handleResetData}
@@ -644,5 +685,26 @@ const styles = StyleSheet.create({
   },
   modalDangerSection: {
     marginTop: Spacing.lg,
+  },
+  appearanceSection: {
+    paddingVertical: Spacing.md,
+  },
+  appearanceHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  appearanceOptions: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  appearanceOption: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.xs,
+    borderWidth: 1,
+    alignItems: "center",
   },
 });

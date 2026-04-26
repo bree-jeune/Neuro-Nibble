@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { AppState, Task, EnergyLevel, WeeklyRoom, Step, DailyReflection, ThoughtItem, DopamineItem, DopamineCost } from "@/lib/types";
+import type { AppState, Task, EnergyLevel, WeeklyRoom, Step, DailyReflection, ThoughtItem, DopamineItem, DopamineCost, ColorSchemePreference } from "@/lib/types";
 
 interface AppStore extends AppState {
   setEnergyLevel: (level: EnergyLevel) => void;
+  setColorScheme: (scheme: ColorSchemePreference) => void;
   setWeeklyRoom: (room: WeeklyRoom) => void;
   addTask: (task: Omit<Task, "id" | "createdAt"> & { id?: string }) => string;
   restoreTask: (task: Task, index?: number) => void;
@@ -36,6 +37,7 @@ interface AppStore extends AppState {
 
 const initialState: AppState = {
   energyLevel: "medium",
+  colorScheme: "light",
   weeklyRoom: "gentle",
   tasks: [],
   brainDump: "",
@@ -61,7 +63,9 @@ export const useAppStore = create<AppStore>()(
       ...initialState,
 
       setEnergyLevel: (level) => set({ energyLevel: level }),
-      
+
+      setColorScheme: (scheme) => set({ colorScheme: scheme }),
+
       setWeeklyRoom: (room) => set({ weeklyRoom: room }),
       
       addTask: (task) => {
@@ -322,6 +326,10 @@ export const useAppStore = create<AppStore>()(
           
           if (!state.firstUseDate) {
             state.firstUseDate = new Date().toISOString();
+          }
+
+          if (!state.colorScheme) {
+            state.colorScheme = "light";
           }
           
           state.tasks = state.tasks.map((task) => ({
