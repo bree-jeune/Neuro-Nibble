@@ -8,7 +8,6 @@ import {
   Keyboard,
   Modal,
   ScrollView,
-  Animated as RNAnimated,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -21,16 +20,22 @@ import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { WeeklyRoomCard } from "@/components/WeeklyRoomCard";
 import { SwipeableThoughtCard } from "@/components/SwipeableThoughtCard";
 import { DopamineVendingMachine } from "@/components/DopamineVendingMachine";
-import { getRoomConfig } from "@/components/WeeklyRoomBadge";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { DynamicFooter } from "@/components/DynamicFooter";
 import { useAppStore } from "@/lib/store";
 import { parseBrainDumpToBites } from "@/lib/brainDumpParser";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
-import type { ThoughtItem, DopamineCost, EnergyLevel, Step } from "@/lib/types";
+import type {
+  WeeklyRoom,
+  ThoughtItem,
+  DopamineCost,
+  EnergyLevel,
+  Step,
+} from "@/lib/types";
 
 const THOUGHT_PLACEHOLDERS = [
   "What's weighing on you?",
@@ -60,6 +65,7 @@ export default function ReflectScreen() {
 
   const {
     weeklyRoom,
+    setWeeklyRoom,
     thoughtDump,
     addThought,
     removeThought,
@@ -79,8 +85,6 @@ export default function ReflectScreen() {
   const [toastMessage, setToastMessage] = useState("");
   const [triageThought, setTriageThought] = useState<ThoughtItem | null>(null);
   const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
-  const [tinyThingEdited, setTinyThingEdited] = useState(false);
-  const tinyThingSavedOpacity = useRef(new RNAnimated.Value(0)).current;
   const inputRef = useRef<TextInput>(null);
 
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -107,6 +111,14 @@ export default function ReflectScreen() {
 
   const activeThoughts = thoughtDump.filter(
     (thought) => (thought.status ?? "active") === "active",
+  );
+
+  const handleRoomSelect = useCallback(
+    (room: WeeklyRoom) => {
+      triggerHaptic("medium");
+      setWeeklyRoom(room);
+    },
+    [setWeeklyRoom],
   );
 
   const handleAddThought = useCallback(() => {
@@ -148,21 +160,24 @@ export default function ReflectScreen() {
   );
 
   // ── CHANGED: open review modal instead of immediately converting ────────
-  const handleBreakIntoBites = useCallback((thought: ThoughtItem) => {
-    const parsed = parseBrainDumpToBites(thought.text);
-    // Close triage, open review
-    setTriageThought(null);
-    setBitesReview({
-      thought,
-      parsedTitle: parsed.title,
-      steps: parsed.steps,
-      energyLevel: parsed.suggestedEnergy,
-    });
-    setReviewSteps(parsed.steps);
-    setReviewNewBiteText("");
-    setEditingBiteId(null);
-    setEditingBiteText("");
-  }, []);
+  const handleBreakIntoBites = useCallback(
+    (thought: ThoughtItem) => {
+      const parsed = parseBrainDumpToBites(thought.text);
+      // Close triage, open review
+      setTriageThought(null);
+      setBitesReview({
+        thought,
+        parsedTitle: parsed.title,
+        steps: parsed.steps,
+        energyLevel: parsed.suggestedEnergy,
+      });
+      setReviewSteps(parsed.steps);
+      setReviewNewBiteText("");
+      setEditingBiteId(null);
+      setEditingBiteText("");
+    },
+    [],
+  );
 
   // ── NEW: confirm from review modal ──────────────────────────────────────
   const handleConfirmBitesReview = useCallback(() => {
@@ -236,40 +251,7 @@ export default function ReflectScreen() {
     [removeDopamineItem],
   );
 
-  const handleTinyThingChange = useCallback(
-    (text: string) => {
-      setTinyThingEdited(true);
-      setOneTinyThing(text);
-    },
-    [setOneTinyThing],
-  );
-
-  const handleTinyThingBlur = useCallback(() => {
-    if (!tinyThingEdited) {
-      return;
-    }
-
-    setTinyThingEdited(false);
-    tinyThingSavedOpacity.setValue(0);
-    RNAnimated.sequence([
-      RNAnimated.timing(tinyThingSavedOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      RNAnimated.delay(1000),
-      RNAnimated.timing(tinyThingSavedOpacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [tinyThingEdited, tinyThingSavedOpacity]);
-
-  const currentRoomConfig = getRoomConfig(weeklyRoom);
-  const currentRoomColor = theme[
-    `room${weeklyRoom.charAt(0).toUpperCase() + weeklyRoom.slice(1)}` as keyof typeof theme
-  ] as string;
+  const rooms: WeeklyRoom[] = ["chaos", "gentle", "build", "repair"];
 
   const renderThoughtItem = useCallback(
     ({ item }: { item: ThoughtItem }) => (
@@ -300,37 +282,18 @@ export default function ReflectScreen() {
         <View
           style={[styles.card, { backgroundColor: theme.backgroundDefault }]}
         >
-          <View style={styles.roomRow}>
-            <View
-              style={[styles.roomIcon, { backgroundColor: currentRoomColor }]}
-            >
-              <Feather
-                name={currentRoomConfig.icon}
-                size={18}
-                color={theme.text}
+          <ThemedText type="h4" style={styles.cardTitle}>
+            How are you showing up?
+          </ThemedText>
+          <View style={styles.roomsGrid}>
+            {rooms.map((room) => (
+              <WeeklyRoomCard
+                key={room}
+                room={room}
+                selected={weeklyRoom === room}
+                onPress={() => handleRoomSelect(room)}
               />
-            </View>
-            <View style={styles.roomCopy}>
-              <ThemedText style={styles.roomEyebrow}>Current mode</ThemedText>
-              <ThemedText style={styles.roomLabel}>
-                {currentRoomConfig.label}
-              </ThemedText>
-            </View>
-            <Pressable
-              onPress={() => {
-                triggerHaptic("selection");
-                navigation.navigate("WeeklyRoomSetup", { mode: "change" });
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Change mode"
-              style={styles.changeModeButton}
-            >
-              <ThemedText
-                style={[styles.changeModeText, { color: theme.primary }]}
-              >
-                Change mode
-              </ThemedText>
-            </Pressable>
+            ))}
           </View>
         </View>
 
@@ -338,7 +301,7 @@ export default function ReflectScreen() {
           style={[
             styles.card,
             styles.mainCard,
-            { backgroundColor: theme.backgroundDefault },
+            { backgroundColor: theme.backgroundSecondary },
           ]}
         >
           <ThemedText type="h3" style={styles.cardTitle}>
@@ -351,43 +314,54 @@ export default function ReflectScreen() {
           </ThemedText>
 
           {activeThoughts.length > 0 ? (
-            <FlatList
-              data={activeThoughts}
-              renderItem={renderThoughtItem}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-              contentContainerStyle={styles.thoughtList}
-              showsVerticalScrollIndicator={false}
-            />
+            <>
+              <View
+                style={[
+                  styles.swipeHintPill,
+                  { backgroundColor: theme.primary + "10" },
+                ]}
+              >
+                <ThemedText
+                  style={[styles.swipeHintText, { color: theme.textSecondary }]}
+                >
+                  ← swipe to vent · swipe to task →
+                </ThemedText>
+              </View>
+              <FlatList
+                data={activeThoughts}
+                renderItem={renderThoughtItem}
+                keyExtractor={(item) => item.id}
+                scrollEnabled={false}
+                contentContainerStyle={styles.thoughtList}
+                showsVerticalScrollIndicator={false}
+              />
+            </>
           ) : (
             <View
               style={[
                 styles.emptyState,
-                { backgroundColor: theme.backgroundSecondary },
+                { backgroundColor: theme.backgroundDefault },
               ]}
             >
-              <Feather name="inbox" size={32} color={theme.textSecondary} />
+              <Feather name="inbox" size={40} color={theme.textSecondary} />
               <ThemedText
-                style={[styles.emptyText, { color: theme.textSecondary }]}
+                style={[styles.emptyQuote, { color: theme.textSecondary }]}
               >
-                No thoughts here. That can be peace or a blank page.
+                Whatever's loud in your head belongs here.
               </ThemedText>
             </View>
           )}
 
-          {activeThoughts.length > 0 ? (
-            <ThemedText
-              style={[styles.swipeHint, { color: theme.textSecondary }]}
-            >
-              {"← swipe to vent  ·  swipe to task →"}
-            </ThemedText>
-          ) : null}
-
+          <ThemedText
+            style={[styles.inputLabel, { color: theme.textSecondary }]}
+          >
+            What's on your mind?
+          </ThemedText>
           <View
             style={[
               styles.inputBar,
               {
-                backgroundColor: theme.backgroundSecondary,
+                backgroundColor: theme.backgroundDefault,
                 borderColor: theme.border,
               },
             ]}
@@ -435,12 +409,20 @@ export default function ReflectScreen() {
           >
             Things YOUR brain actually likes (not shoulds).
           </ThemedText>
-          <DopamineVendingMachine
-            items={dopamineMenu}
-            onAddItem={handleAddDopamineItem}
-            onRemoveItem={handleRemoveDopamineItem}
-            onRestoreDefaults={restoreDefaultDopamineRewards}
-          />
+          <View style={styles.dopamineScrollWrap}>
+            <ScrollView
+              scrollEnabled
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={false}
+            >
+              <DopamineVendingMachine
+                items={dopamineMenu}
+                onAddItem={handleAddDopamineItem}
+                onRemoveItem={handleRemoveDopamineItem}
+                onRestoreDefaults={restoreDefaultDopamineRewards}
+              />
+            </ScrollView>
+          </View>
         </View>
 
         <View
@@ -466,16 +448,8 @@ export default function ReflectScreen() {
             placeholder="Just one small thing..."
             placeholderTextColor={theme.textSecondary}
             value={oneTinyThing}
-            onChangeText={handleTinyThingChange}
-            onBlur={handleTinyThingBlur}
+            onChangeText={setOneTinyThing}
           />
-          <RNAnimated.View style={{ opacity: tinyThingSavedOpacity }}>
-            <ThemedText
-              style={[styles.savedConfirmation, { color: theme.primary }]}
-            >
-              Saved
-            </ThemedText>
-          </RNAnimated.View>
         </View>
 
         <DynamicFooter screen="reflect" />
@@ -598,14 +572,11 @@ export default function ReflectScreen() {
             {/* Header */}
             <View style={styles.reviewHeader}>
               <ThemedText type="h3" style={styles.triageTitle}>
-                Here&apos;s what we broke it into
+                Here's what we broke it into
               </ThemedText>
               <ThemedText
                 numberOfLines={2}
-                style={[
-                  styles.reviewOriginalText,
-                  { color: theme.textSecondary },
-                ]}
+                style={[styles.reviewOriginalText, { color: theme.textSecondary }]}
               >
                 {bitesReview?.thought.text}
               </ThemedText>
@@ -697,7 +668,10 @@ export default function ReflectScreen() {
 
               {/* Add new bite inline */}
               <View
-                style={[styles.reviewAddRow, { borderTopColor: theme.border }]}
+                style={[
+                  styles.reviewAddRow,
+                  { borderTopColor: theme.border },
+                ]}
               >
                 <TextInput
                   style={[styles.reviewAddInput, { color: theme.text }]}
@@ -841,68 +815,57 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
     fontSize: 14,
   },
-  roomRow: {
-    flexDirection: "row",
-    alignItems: "center",
+  roomsGrid: {
     gap: Spacing.sm,
-  },
-  roomIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.xs,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  roomCopy: {
-    flex: 1,
-  },
-  roomEyebrow: {
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-  },
-  roomLabel: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  changeModeButton: {
-    minHeight: 44,
-    justifyContent: "center",
-    paddingHorizontal: Spacing.sm,
-  },
-  changeModeText: {
-    fontSize: 13,
-    fontWeight: "700",
+    marginTop: Spacing.sm,
   },
   thoughtList: {
-    marginBottom: Spacing.md,
-  },
-  swipeHint: {
-    fontSize: 12,
-    fontStyle: "italic",
-    textAlign: "center",
     marginBottom: Spacing.md,
   },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: Spacing.xl,
+    paddingVertical: Spacing.xxl,
+    paddingHorizontal: Spacing.lg,
     borderRadius: BorderRadius.sm,
     marginBottom: Spacing.md,
-    gap: Spacing.sm,
+    gap: Spacing.md,
   },
   emptyText: {
     fontSize: 14,
     fontStyle: "italic",
+  },
+  emptyQuote: {
+    fontSize: 15,
+    fontStyle: "italic",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  swipeHintPill: {
+    alignSelf: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    marginBottom: Spacing.md,
+  },
+  swipeHintText: {
+    fontSize: 12,
+  },
+  inputLabel: {
+    fontSize: 12,
+    marginBottom: 4,
   },
   inputBar: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.xl,
     borderWidth: 1,
     gap: Spacing.sm,
+  },
+  dopamineScrollWrap: {
+    maxHeight: 320,
   },
   thoughtInput: {
     flex: 1,
@@ -925,12 +888,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     fontSize: 16,
     letterSpacing: 0.5,
-  },
-  savedConfirmation: {
-    fontSize: 12,
-    fontWeight: "700",
-    marginTop: Spacing.xs,
-    textAlign: "right",
   },
   toast: {
     position: "absolute",

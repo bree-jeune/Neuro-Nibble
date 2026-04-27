@@ -11,7 +11,6 @@ import { triggerHaptic } from "@/lib/haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { TaskCard } from "@/components/TaskCard";
 import { ContextualBanner } from "@/components/ContextualBanner";
-import { AmbientPresenceStrip } from "@/components/AmbientPresenceStrip";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useAppStore } from "@/lib/store";
@@ -192,7 +191,6 @@ export default function TasksScreen() {
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
       />
-      <AmbientPresenceStrip />
     </View>
   );
 }

@@ -7,16 +7,18 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+
 import { triggerHaptic } from "@/lib/haptics";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { BorderRadius, Spacing } from "@/constants/theme";
 import { useAppStore } from "@/lib/store";
+import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 import type { WeeklyRoom } from "@/lib/types";
 
 const SHAPE_SIZE = 56;
-
-const ROOM_ORDER: WeeklyRoom[] = ["chaos", "gentle", "build", "repair"];
 
 const ROOM_ICONS: Record<WeeklyRoom, keyof typeof Feather.glyphMap> = {
   chaos: "wind",
@@ -35,20 +37,19 @@ const ROOM_LABELS: Record<WeeklyRoom, string> = {
 export function RoomSwitcher() {
   const { theme } = useTheme();
   const weeklyRoom = useAppStore((s) => s.weeklyRoom);
-  const setWeeklyRoom = useAppStore((s) => s.setWeeklyRoom);
-  
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   const scale = useSharedValue(1);
 
   const handlePress = () => {
     triggerHaptic("selection");
-    
+
     scale.value = withSpring(0.9, { damping: 15, stiffness: 400 }, () => {
       scale.value = withSpring(1, { damping: 15, stiffness: 400 });
     });
-    
-    const currentIndex = ROOM_ORDER.indexOf(weeklyRoom);
-    const nextIndex = (currentIndex + 1) % ROOM_ORDER.length;
-    setWeeklyRoom(ROOM_ORDER[nextIndex]);
+
+    navigation.navigate("WeeklyRoomSetup", { mode: "change" });
   };
 
   const getRoomColor = (room: WeeklyRoom): string => {
