@@ -11,6 +11,7 @@ import { triggerHaptic } from "@/lib/haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { TaskCard } from "@/components/TaskCard";
 import { ContextualBanner } from "@/components/ContextualBanner";
+import { AmbientPresenceStrip } from "@/components/AmbientPresenceStrip";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useAppStore } from "@/lib/store";
@@ -28,16 +29,24 @@ export default function TasksScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [filter, setFilter] = useState<FilterType>("all");
 
-  const { tasks, deleteTask, restoreTask, toggleStepComplete, restoreStep, energyLevel, weeklyRoom } = useAppStore();
+  const { tasks, deleteTask, restoreTask, toggleStepComplete, restoreStep, archiveTask, energyLevel, weeklyRoom } = useAppStore();
   const showSnackbar = useSnackbarStore((s) => s.show);
 
-  const filteredTasks = filter === "all" 
-    ? tasks 
-    : tasks.filter(t => t.energyLevel === filter);
+  const visibleTasks = tasks.filter((t) => !t.isArchived);
+  const filteredTasks =
+    filter === "all"
+      ? visibleTasks
+      : visibleTasks.filter((t) => t.energyLevel === filter);
 
   const handleTaskPress = useCallback((taskId: string) => {
     navigation.navigate("BreakItDown", { taskId });
   }, [navigation]);
+
+  const handleArchiveTask = useCallback((taskId: string) => {
+    triggerHaptic("success");
+    archiveTask(taskId);
+    showSnackbar("Archived. Great work.");
+  }, [archiveTask, showSnackbar]);
 
   const handleDeleteTask = useCallback((taskId: string) => {
     const taskToDelete = tasks.find(t => t.id === taskId);
@@ -101,29 +110,40 @@ export default function TasksScreen() {
     </View>
   );
 
-  const FilterButton = ({ type, label }: { type: FilterType; label: string }) => (
-    <Pressable
-      onPress={() => {
-        triggerHaptic("selection");
-        setFilter(type);
-      }}
-      style={[
-        styles.filterButton,
-        {
-          backgroundColor: filter === type ? theme.primary : theme.backgroundDefault,
-        },
-      ]}
-    >
-      <ThemedText
+  const FilterButton = ({ type, label }: { type: FilterType; label: string }) => {
+    const selectedColor =
+      type === "low"
+        ? theme.energyLow
+        : type === "medium"
+          ? theme.energyMedium
+          : type === "high"
+            ? theme.energyHigh
+            : theme.primary;
+    const isSelected = filter === type;
+    return (
+      <Pressable
+        onPress={() => {
+          triggerHaptic("selection");
+          setFilter(type);
+        }}
         style={[
-          styles.filterText,
-          { color: filter === type ? "#FFFFFF" : theme.text },
+          styles.filterButton,
+          {
+            backgroundColor: isSelected ? selectedColor : theme.backgroundDefault,
+          },
         ]}
       >
-        {label}
-      </ThemedText>
-    </Pressable>
-  );
+        <ThemedText
+          style={[
+            styles.filterText,
+            { color: isSelected ? "#FFFFFF" : theme.text },
+          ]}
+        >
+          {label}
+        </ThemedText>
+      </Pressable>
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
@@ -157,6 +177,7 @@ export default function TasksScreen() {
             task={item}
             onPress={() => handleTaskPress(item.id)}
             onDelete={() => handleDeleteTask(item.id)}
+            onArchive={() => handleArchiveTask(item.id)}
             onStepToggle={(stepId) => handleStepToggle(item.id, stepId)}
           />
         )}
@@ -171,6 +192,7 @@ export default function TasksScreen() {
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
       />
+      <AmbientPresenceStrip />
     </View>
   );
 }
