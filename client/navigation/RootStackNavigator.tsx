@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import MainTabNavigator from "@/navigation/MainTabNavigator";
 import BreakItDownScreen from "@/screens/BreakItDownScreen";
 import OnboardingScreen from "@/screens/OnboardingScreen";
+import QuietRoomScreen from "@/screens/QuietRoomScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useAppStore } from "@/lib/store";
 
@@ -10,6 +11,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Main: undefined;
   BreakItDown: { taskId?: string } | undefined;
+  QuietRoom: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -38,6 +40,13 @@ export default function RootStackNavigator() {
         options={{
           presentation: "modal",
           headerTitle: "Break It Down",
+        }}
+      />
+      <Stack.Screen
+        name="QuietRoom"
+        component={QuietRoomScreen}
+        options={{
+          headerTitle: "Quiet Room",
         }}
       />
     </Stack.Navigator>

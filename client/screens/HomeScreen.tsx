@@ -1,5 +1,12 @@
 import React, { useState, useCallback, useLayoutEffect, useMemo } from "react";
-import { View, ScrollView, StyleSheet, Pressable, Modal, TextInput } from "react-native";
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  Pressable,
+  Modal,
+  TextInput,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -8,16 +15,13 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { triggerHaptic } from "@/lib/haptics";
-
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { DynamicFooter } from "@/components/DynamicFooter";
-import { EnergyCard } from "@/components/EnergyCard";
 import { WeeklyRoomSection } from "@/components/WeeklyRoomSection";
-import { BodyDoublingRoomCard } from "@/components/BodyDoublingRoomCard";
+import { QuietRoomPreviewCard } from "@/components/QuietRoomPreviewCard";
 import { RecentTaskCard } from "@/components/RecentTaskCard";
-import { DailyBookend } from "@/components/DailyBookend";
 import { useAppStore } from "@/lib/store";
 import { useSnackbarStore } from "@/lib/snackbarStore";
 import { useAudio } from "@/lib/AudioContext";
@@ -29,24 +33,22 @@ export default function HomeScreen() {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [showEndDayModal, setShowEndDayModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showEnergyCheck, setShowEnergyCheck] = useState(false);
   const [reflectionText, setReflectionText] = useState("");
-  const [endDayDopamineItem, setEndDayDopamineItem] = useState<string | null>(null);
 
-  const { 
-    energyLevel, 
-    setEnergyLevel, 
-    weeklyRoom, 
+  const {
+    setEnergyLevel,
+    weeklyRoom,
     tasks,
     updateTask,
     bookendCompleted,
     setBookendCompleted,
     restoreBookendState,
     lastBookendDate,
-    dopamineMenu,
     energyCheckInEnabled,
     displayName,
     addDailyReflection,
@@ -60,82 +62,112 @@ export default function HomeScreen() {
     });
   }, [navigation]);
 
-  const recentTasks = tasks
-    .filter((t) => {
-      if (!t.lastWorkedOn) return false;
-      if (t.isArchived) return false;
-      const allStepsCompleted = t.steps.length > 0 && t.steps.every((s) => s.completed);
-      return !allStepsCompleted;
-    })
-    .sort((a, b) => new Date(b.lastWorkedOn!).getTime() - new Date(a.lastWorkedOn!).getTime())
-    .slice(0, 3);
-
-  const hasTouchedTasksToday = tasks.some((t) => {
-    const today = new Date().toISOString().split("T")[0];
-    return t.lastWorkedOn?.startsWith(today);
-  });
+  const recentTasks = useMemo(
+    () =>
+      tasks
+        .filter((t) => {
+          if (!t.lastWorkedOn || t.isArchived) return false;
+          const allStepsCompleted =
+            t.steps.length > 0 && t.steps.every((s) => s.completed);
+          return !allStepsCompleted;
+        })
+        .sort(
+          (a, b) =>
+            new Date(b.lastWorkedOn!).getTime() -
+            new Date(a.lastWorkedOn!).getTime(),
+        )
+        .slice(0, 3),
+    [tasks],
+  );
 
   const completedToday = useMemo(() => {
     const today = new Date().toISOString().split("T")[0];
-    return tasks.reduce((count, t) => {
-      return count + t.steps.filter((s) => s.completed && s.completedAt?.startsWith(today)).length;
+    return tasks.reduce((count, task) => {
+      return (
+        count +
+        task.steps.filter(
+          (step) => step.completed && step.completedAt?.startsWith(today),
+        ).length
+      );
     }, 0);
   }, [tasks]);
 
-  const handleTaskPress = useCallback((task: Task) => {
-    triggerHaptic("selection");
-    if (energyCheckInEnabled) {
-      setSelectedTask(task);
-      setShowEnergyCheck(true);
-    } else {
-      navigation.navigate("BreakItDown", { taskId: task.id });
-    }
-  }, [energyCheckInEnabled, navigation]);
+  const incompleteCount = useMemo(
+    () =>
+      tasks.filter(
+        (task) =>
+          !task.isArchived &&
+          task.steps.length > 0 &&
+          !task.steps.every((step) => step.completed),
+      ).length,
+    [tasks],
+  );
 
-  const handleEnergySelect = useCallback((level: EnergyLevel) => {
-    triggerHaptic("light");
-    setEnergyLevel(level);
-    if (level === "low") {
-      startAudio();
-    }
-    if (selectedTask) {
+  const handleTaskPress = useCallback(
+    (task: Task) => {
+      triggerHaptic("selection");
+      if (energyCheckInEnabled) {
+        setSelectedTask(task);
+        setShowEnergyCheck(true);
+        return;
+      }
+      navigation.navigate("BreakItDown", { taskId: task.id });
+    },
+    [energyCheckInEnabled, navigation],
+  );
+
+  const handleEnergySelect = useCallback(
+    (level: EnergyLevel) => {
+      triggerHaptic("light");
+      setEnergyLevel(level);
+      if (level === "low") {
+        startAudio();
+      }
+      if (!selectedTask) {
+        return;
+      }
       updateTask(selectedTask.id, { energyLevel: level });
       setShowEnergyCheck(false);
       navigation.navigate("BreakItDown", { taskId: selectedTask.id });
       setSelectedTask(null);
-    }
-  }, [setEnergyLevel, selectedTask, updateTask, navigation, startAudio]);
+    },
+    [navigation, selectedTask, setEnergyLevel, startAudio, updateTask],
+  );
 
   const handleSkipEnergyCheck = useCallback(() => {
-    if (selectedTask) {
-      setShowEnergyCheck(false);
-      navigation.navigate("BreakItDown", { taskId: selectedTask.id });
-      setSelectedTask(null);
+    if (!selectedTask) {
+      return;
     }
-  }, [selectedTask, navigation]);
+    setShowEnergyCheck(false);
+    navigation.navigate("BreakItDown", { taskId: selectedTask.id });
+    setSelectedTask(null);
+  }, [navigation, selectedTask]);
 
-  const handleBookend = useCallback(() => {
-    triggerHaptic("success");
-    setBookendCompleted(true);
-  }, [setBookendCompleted]);
-
-  const handleEndDay = () => {
+  const handleEndDay = useCallback(() => {
     const prevCompleted = bookendCompleted;
     const prevLastDate = lastBookendDate;
-    
+
     triggerHaptic("success");
-    
+
     if (reflectionText.trim()) {
       addDailyReflection(reflectionText.trim());
     }
-    
+
     setBookendCompleted(true);
     setShowEndDayModal(false);
     setReflectionText("");
     showSnackbar("Day ended. Rest well.", () => {
       restoreBookendState(prevCompleted, prevLastDate);
     });
-  };
+  }, [
+    addDailyReflection,
+    bookendCompleted,
+    lastBookendDate,
+    reflectionText,
+    restoreBookendState,
+    setBookendCompleted,
+    showSnackbar,
+  ]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -144,203 +176,208 @@ export default function HomeScreen() {
     return "evening";
   };
 
-  const openEndDayModal = useCallback(() => {
-    if (dopamineMenu.length > 0) {
-      const pick = dopamineMenu[Math.floor(Math.random() * dopamineMenu.length)];
-      setEndDayDopamineItem(pick.text);
-    } else {
-      setEndDayDopamineItem(null);
-    }
-    setShowEndDayModal(true);
-  }, [dopamineMenu]);
+  const navigateToTab = useCallback(
+    (tabName: "ReflectTab" | "TasksTab") => {
+      triggerHaptic("selection");
+      const parent = navigation.getParent();
+      if (parent) {
+        (parent as unknown as { navigate: (name: string) => void }).navigate(
+          tabName,
+        );
+      }
+    },
+    [navigation],
+  );
 
-  const dopaminePreview = useMemo(() => {
-    if (dopamineMenu.length === 0) return [];
-    const shuffled = [...dopamineMenu].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 2);
-  }, [dopamineMenu]);
-
-  const navigateToTab = useCallback((tabName: "ReflectTab" | "TasksTab") => {
-    triggerHaptic("selection");
-    const parent = navigation.getParent();
-    if (parent) {
-      (parent as unknown as { navigate: (name: string) => void }).navigate(tabName);
-    }
-  }, [navigation]);
-
-  const incompleteCount = useMemo(() => {
-    return tasks.filter(
-      (t) =>
-        !t.isArchived &&
-        t.steps.length > 0 &&
-        !t.steps.every((s) => s.completed),
-    ).length;
-  }, [tasks]);
-
-  const showBodyDoubling = weeklyRoom !== "chaos";
-  const showEndDayCard =
-    !bookendCompleted &&
-    (weeklyRoom === "chaos" || weeklyRoom === "gentle" || hasTouchedTasksToday);
-
-  const renderRoomContent = () => {
+  const renderMainAction = () => {
     if (weeklyRoom === "chaos") {
       return (
-        <>
-          <View style={[styles.chaosCard, { backgroundColor: theme.backgroundDefault }]}>
-            <ThemedText type="h3" style={styles.chaosTitle}>
-              What's the ONE thing that would make today less bad?
+        <View
+          style={[
+            styles.mainCard,
+            { backgroundColor: theme.backgroundDefault },
+          ]}
+        >
+          <ThemedText type="h3" style={styles.mainTitle}>
+            What’s the next smallest useful thing?
+          </ThemedText>
+          <ThemedText
+            style={[styles.mainSubtitle, { color: theme.textSecondary }]}
+          >
+            One tiny move is enough.
+          </ThemedText>
+          <Pressable
+            onPress={() => navigation.navigate("BreakItDown")}
+            accessibilityRole="button"
+            accessibilityLabel="Deal with one thing"
+            style={[styles.mainButton, { backgroundColor: theme.primary }]}
+          >
+            <ThemedText style={styles.mainButtonText}>
+              Deal with one thing
             </ThemedText>
-            <Pressable
-              onPress={() => navigation.navigate("BreakItDown")}
-              style={[styles.chaosButton, { backgroundColor: theme.primary }]}
-            >
-              <ThemedText style={styles.chaosButtonText}>Deal with one thing</ThemedText>
-            </Pressable>
-          </View>
+          </Pressable>
           <Pressable
             onPress={() => navigateToTab("ReflectTab")}
-            style={styles.subtleLink}
+            style={styles.secondaryLink}
           >
-            <ThemedText style={[styles.subtleLinkText, { color: theme.textSecondary }]}>
+            <ThemedText
+              style={[styles.secondaryLinkText, { color: theme.textSecondary }]}
+            >
               Brain dump first →
             </ThemedText>
           </Pressable>
-        </>
+        </View>
       );
     }
 
     if (weeklyRoom === "gentle") {
       return (
-        <>
-          {recentTasks.length > 0 ? (
-            <View style={styles.section}>
-              <ThemedText type="h3" style={styles.sectionTitle}>
-                When you're ready
-              </ThemedText>
-              {recentTasks.map((task) => (
-                <RecentTaskCard
-                  key={task.id}
-                  task={task}
-                  onPress={() => handleTaskPress(task)}
-                />
-              ))}
-            </View>
-          ) : tasks.length === 0 ? (
-            <View style={[styles.emptyStateCard, { backgroundColor: theme.backgroundDefault }]}>
-              <ThemedText type="h3" style={styles.emptyStateTitle}>
-                Nothing's required today.
-              </ThemedText>
-              <ThemedText style={[styles.emptyStateText, { color: theme.textSecondary }]}>
-                If something pops up, we'll make it small enough to actually start.
-              </ThemedText>
-              <Pressable
-                onPress={() => navigation.navigate("BreakItDown")}
-                style={[styles.emptyStateButton, { backgroundColor: theme.primary }]}
-              >
-                <Feather name="plus" size={18} color="#FFFFFF" />
-                <ThemedText style={styles.emptyStateButtonText}>Add something tiny</ThemedText>
-              </Pressable>
-            </View>
-          ) : null}
-
-          <View style={[styles.dopamineCard, { backgroundColor: theme.backgroundDefault }]}>
-            <View style={styles.dopamineHeader}>
-              <Feather name="gift" size={18} color={theme.primary} />
-              <ThemedText style={styles.dopamineTitle}>Your dopamine menu</ThemedText>
-            </View>
-            <ThemedText style={[styles.dopamineSubtitle, { color: theme.textSecondary }]}>
-              Rest is productive.
+        <View
+          style={[
+            styles.mainCard,
+            { backgroundColor: theme.backgroundDefault },
+          ]}
+        >
+          <ThemedText type="h3" style={styles.mainTitle}>
+            Gentle next step
+          </ThemedText>
+          <ThemedText
+            style={[styles.mainSubtitle, { color: theme.textSecondary }]}
+          >
+            You can stop after one bite. That still counts.
+          </ThemedText>
+          <Pressable
+            onPress={() =>
+              recentTasks[0]
+                ? handleTaskPress(recentTasks[0])
+                : navigation.navigate("BreakItDown")
+            }
+            accessibilityRole="button"
+            accessibilityLabel="Choose one gentle bite"
+            style={[styles.mainButton, { backgroundColor: theme.primary }]}
+          >
+            <ThemedText style={styles.mainButtonText}>
+              Choose one gentle bite
             </ThemedText>
-            {dopaminePreview.length > 0 ? (
-              <View style={styles.dopamineList}>
-                {dopaminePreview.map((item) => (
-                  <View
-                    key={item.id}
-                    style={[styles.dopaminePill, { backgroundColor: theme.roomGentle }]}
-                  >
-                    <ThemedText style={styles.dopaminePillText}>{item.text}</ThemedText>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Pressable
-                onPress={() => navigateToTab("ReflectTab")}
-                style={styles.dopamineEmptyLink}
-              >
-                <ThemedText style={[styles.dopamineEmptyText, { color: theme.primary }]}>
-                  Add some treats to your dopamine menu →
-                </ThemedText>
-              </Pressable>
-            )}
-          </View>
-        </>
+          </Pressable>
+        </View>
       );
     }
 
     if (weeklyRoom === "build") {
       return (
-        <>
-          {recentTasks.length > 0 ? (
-            <View style={styles.section}>
-              <ThemedText type="h3" style={styles.sectionTitle}>
-                Keep the momentum
-              </ThemedText>
-              {recentTasks.map((task) => (
-                <RecentTaskCard
-                  key={task.id}
-                  task={task}
-                  onPress={() => handleTaskPress(task)}
-                />
-              ))}
-            </View>
-          ) : tasks.length === 0 ? (
-            <View style={[styles.emptyStateCard, { backgroundColor: theme.backgroundDefault }]}>
-              <ThemedText type="h3" style={styles.emptyStateTitle}>
-                Ready to build something?
-              </ThemedText>
-              <ThemedText style={[styles.emptyStateText, { color: theme.textSecondary }]}>
-                Pick one thing that's been waiting. We'll break it into pieces you can move.
-              </ThemedText>
-              <Pressable
-                onPress={() => navigation.navigate("BreakItDown")}
-                style={[styles.emptyStateButton, { backgroundColor: theme.primary }]}
-              >
-                <Feather name="plus" size={18} color="#FFFFFF" />
-                <ThemedText style={styles.emptyStateButtonText}>Start with one thing</ThemedText>
-              </Pressable>
-            </View>
-          ) : null}
-
-          <View style={[styles.statRow, { backgroundColor: theme.backgroundDefault }]}>
+        <View
+          style={[
+            styles.mainCard,
+            { backgroundColor: theme.backgroundDefault },
+          ]}
+        >
+          <ThemedText type="h3" style={styles.mainTitle}>
+            Build from momentum
+          </ThemedText>
+          <View style={styles.statRow}>
             <View style={styles.statBlock}>
               <ThemedText type="h2" style={{ color: theme.primary }}>
                 {incompleteCount}
               </ThemedText>
-              <ThemedText style={[styles.statBlockLabel, { color: theme.textSecondary }]}>
-                {incompleteCount === 1 ? "active task" : "active tasks"}
+              <ThemedText
+                style={[styles.statLabel, { color: theme.textSecondary }]}
+              >
+                active tasks
               </ThemedText>
             </View>
-            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+            <View
+              style={[styles.statDivider, { backgroundColor: theme.border }]}
+            />
             <View style={styles.statBlock}>
               <ThemedText type="h2" style={{ color: theme.primary }}>
                 {completedToday}
               </ThemedText>
-              <ThemedText style={[styles.statBlockLabel, { color: theme.textSecondary }]}>
-                {completedToday === 1 ? "bite done today" : "bites done today"}
+              <ThemedText
+                style={[styles.statLabel, { color: theme.textSecondary }]}
+              >
+                bites done today
               </ThemedText>
             </View>
           </View>
-        </>
+          <Pressable
+            onPress={() =>
+              recentTasks[0]
+                ? handleTaskPress(recentTasks[0])
+                : navigation.navigate("BreakItDown")
+            }
+            accessibilityRole="button"
+            accessibilityLabel="Keep momentum"
+            style={[styles.mainButton, { backgroundColor: theme.primary }]}
+          >
+            <ThemedText style={styles.mainButtonText}>Keep momentum</ThemedText>
+          </Pressable>
+        </View>
       );
     }
 
-    // repair
     return (
-      <>
+      <View
+        style={[styles.mainCard, { backgroundColor: theme.backgroundDefault }]}
+      >
+        <ThemedText type="h3" style={styles.mainTitle}>
+          Repair mode
+        </ThemedText>
+        <ThemedText
+          style={[styles.mainSubtitle, { color: theme.textSecondary }]}
+        >
+          No shame. Just pick one thing to re-enter.
+        </ThemedText>
+        <Pressable
+          onPress={() =>
+            recentTasks[0]
+              ? handleTaskPress(recentTasks[0])
+              : navigateToTab("TasksTab")
+          }
+          accessibilityRole="button"
+          accessibilityLabel="Pick one thing to re-enter"
+          style={[styles.mainButton, { backgroundColor: theme.primary }]}
+        >
+          <ThemedText style={styles.mainButtonText}>Pick one thing</ThemedText>
+        </Pressable>
+      </View>
+    );
+  };
+
+  return (
+    <>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
+        contentContainerStyle={{
+          paddingTop: headerHeight + Spacing.lg,
+          paddingBottom: tabBarHeight + Spacing.xl + 24,
+          paddingHorizontal: Spacing.lg,
+        }}
+        scrollIndicatorInsets={{ bottom: insets.bottom }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View>
+          <ThemedText type="h2">
+            {displayName
+              ? `Good ${getGreeting()}, ${displayName}`
+              : `Good ${getGreeting()}`}
+          </ThemedText>
+        </View>
+
+        <View style={styles.weeklyRoomWrapper}>
+          <WeeklyRoomSection room={weeklyRoom} />
+        </View>
+
+        {renderMainAction()}
+
+        <QuietRoomPreviewCard
+          onPress={() => navigation.navigate("QuietRoom")}
+        />
+
         {recentTasks.length > 0 ? (
           <View style={styles.section}>
             <ThemedText type="h3" style={styles.sectionTitle}>
-              Pick up where you left off
+              Recent tasks
             </ThemedText>
             {recentTasks.map((task) => (
               <RecentTaskCard
@@ -352,83 +389,42 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        <Pressable
-          onPress={() => navigateToTab("TasksTab")}
-          style={[styles.repairCard, { backgroundColor: theme.backgroundDefault }]}
-        >
-          <View style={[styles.repairIcon, { backgroundColor: theme.roomRepair }]}>
-            <Feather name="rotate-ccw" size={20} color={theme.text} />
-          </View>
-          <View style={styles.repairTextContainer}>
-            <ThemedText style={styles.repairTitle}>What fell through?</ThemedText>
-            <ThemedText style={[styles.repairSubtitle, { color: theme.textSecondary }]}>
-              Review what's been waiting. No shame, just gentle catching up.
-            </ThemedText>
-          </View>
-          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
-        </Pressable>
-      </>
-    );
-  };
-
-  return (
-    <>
-      <ScrollView
-        style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
-        contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.lg,
-          paddingBottom: tabBarHeight + Spacing.xl + 80,
-          paddingHorizontal: Spacing.lg,
-        }}
-        scrollIndicatorInsets={{ bottom: insets.bottom }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.greetingContainer}>
-          <ThemedText type="h2" style={styles.greeting}>
-            {displayName ? `Good ${getGreeting()}, ${displayName}` : `Good ${getGreeting()}`}
-          </ThemedText>
-        </View>
-
-        <View style={styles.weeklyRoomWrapper}>
-          <WeeklyRoomSection room={weeklyRoom} />
-        </View>
-
-        {showBodyDoubling ? (
-          <View style={styles.quietRoomWrapper}>
-            <BodyDoublingRoomCard />
-          </View>
-        ) : null}
-
-        {renderRoomContent()}
-
         {!bookendCompleted ? (
-          <DailyBookend
-            completed={bookendCompleted}
-            onComplete={handleBookend}
-            timeOfDay={getGreeting()}
-          />
-        ) : null}
-
-        {showEndDayCard ? (
           <Pressable
-            onPress={openEndDayModal}
-            style={[styles.endDayButton, { backgroundColor: theme.backgroundDefault }]}
+            onPress={() => setShowEndDayModal(true)}
+            accessibilityRole="button"
+            accessibilityLabel="End today"
+            style={[
+              styles.endDayButton,
+              { backgroundColor: theme.backgroundDefault },
+            ]}
           >
-            <View style={[styles.endDayIcon, { backgroundColor: theme.secondary }]}>
+            <View
+              style={[styles.endDayIcon, { backgroundColor: theme.secondary }]}
+            >
               <Feather name="sunset" size={20} color="#FFFFFF" />
             </View>
             <View style={styles.endDayTextContainer}>
-              <ThemedText style={styles.endDayTitle}>End Day</ThemedText>
-              <ThemedText style={[styles.endDaySubtitle, { color: theme.textSecondary }]}>
-                Close out today and start fresh tomorrow
+              <ThemedText style={styles.endDayTitle}>End today</ThemedText>
+              <ThemedText
+                style={[styles.endDaySubtitle, { color: theme.textSecondary }]}
+              >
+                Close out without judging the day
               </ThemedText>
             </View>
-            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+            <Feather
+              name="chevron-right"
+              size={20}
+              color={theme.textSecondary}
+            />
           </Pressable>
-        ) : null}
-
-        {bookendCompleted ? (
-          <View style={[styles.dayEndedCard, { backgroundColor: theme.backgroundDefault }]}>
+        ) : (
+          <View
+            style={[
+              styles.dayEndedCard,
+              { backgroundColor: theme.backgroundDefault },
+            ]}
+          >
             <View style={styles.dayEndedLeft}>
               <Feather name="check-circle" size={20} color={theme.success} />
               <ThemedText style={styles.dayEndedText}>
@@ -436,12 +432,14 @@ export default function HomeScreen() {
               </ThemedText>
             </View>
             <Pressable onPress={() => restoreBookendState(false, "")}>
-              <ThemedText style={[styles.dayEndedUndo, { color: theme.textSecondary }]}>
+              <ThemedText
+                style={[styles.dayEndedUndo, { color: theme.textSecondary }]}
+              >
                 undo
               </ThemedText>
             </Pressable>
           </View>
-        ) : null}
+        )}
 
         <DynamicFooter screen="home" />
       </ScrollView>
@@ -452,39 +450,57 @@ export default function HomeScreen() {
         animationType="fade"
         onRequestClose={() => setShowEndDayModal(false)}
       >
-        <Pressable 
+        <Pressable
           style={styles.modalOverlay}
           onPress={() => setShowEndDayModal(false)}
         >
-          <View style={[styles.modalContent, { backgroundColor: theme.backgroundRoot }]}>
-            <Feather name="moon" size={48} color={theme.secondary} style={styles.modalIcon} />
-            
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.backgroundRoot },
+            ]}
+          >
+            <Feather
+              name="moon"
+              size={48}
+              color={theme.secondary}
+              style={styles.modalIcon}
+            />
+
             <ThemedText type="h2" style={styles.modalTitle}>
-              Ready to close out today?
+              End today?
             </ThemedText>
-            
-            <ThemedText style={[styles.modalMessage, { color: theme.textSecondary }]}>
-              You showed up today. That's what matters.
+
+            <ThemedText
+              style={[styles.modalMessage, { color: theme.textSecondary }]}
+            >
+              Close out gently. No judgment, no scorecard.
             </ThemedText>
 
             {completedToday > 0 ? (
-              <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>
-                <ThemedText style={styles.statNumber}>{completedToday}</ThemedText>
-                <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
-                  {completedToday === 1 ? "bite done today" : "bites done today"}
+              <View
+                style={[
+                  styles.statCard,
+                  { backgroundColor: theme.backgroundDefault },
+                ]}
+              >
+                <ThemedText style={styles.statNumber}>
+                  {completedToday}
+                </ThemedText>
+                <ThemedText
+                  style={[styles.statLabel, { color: theme.textSecondary }]}
+                >
+                  {completedToday === 1
+                    ? "bite done today"
+                    : "bites done today"}
                 </ThemedText>
               </View>
             ) : null}
 
-            {endDayDopamineItem ? (
-              <View style={[styles.rewardCard, { backgroundColor: theme.roomGentle }]}>
-                <ThemedText style={styles.rewardTitle}>Treat yourself to:</ThemedText>
-                <ThemedText style={styles.rewardItem}>{endDayDopamineItem}</ThemedText>
-              </View>
-            ) : null}
-
             <View style={styles.reflectionSection}>
-              <ThemedText style={[styles.reflectionLabel, { color: theme.textSecondary }]}>
+              <ThemedText
+                style={[styles.reflectionLabel, { color: theme.textSecondary }]}
+              >
                 Anything on your mind? (optional)
               </ThemedText>
               <TextInput
@@ -507,16 +523,23 @@ export default function HomeScreen() {
 
             <Pressable
               onPress={handleEndDay}
-              style={[styles.confirmButton, { backgroundColor: theme.secondary }]}
+              style={[
+                styles.confirmButton,
+                { backgroundColor: theme.secondary },
+              ]}
             >
-              <ThemedText style={styles.confirmButtonText}>End Today</ThemedText>
+              <ThemedText style={styles.confirmButtonText}>
+                End Today
+              </ThemedText>
             </Pressable>
 
             <Pressable
               onPress={() => setShowEndDayModal(false)}
               style={styles.cancelButton}
             >
-              <ThemedText style={{ color: theme.textSecondary }}>Not yet</ThemedText>
+              <ThemedText style={{ color: theme.textSecondary }}>
+                Not yet
+              </ThemedText>
             </Pressable>
           </View>
         </Pressable>
@@ -528,58 +551,94 @@ export default function HomeScreen() {
         animationType="fade"
         onRequestClose={() => setShowEnergyCheck(false)}
       >
-        <Pressable 
+        <Pressable
           style={styles.modalOverlay}
           onPress={() => setShowEnergyCheck(false)}
         >
-          <View 
-            style={[styles.energyCheckContent, { backgroundColor: theme.backgroundRoot }]}
+          <View
+            style={[
+              styles.energyCheckContent,
+              { backgroundColor: theme.backgroundRoot },
+            ]}
             onStartShouldSetResponder={() => true}
           >
             <ThemedText type="h3" style={styles.energyCheckTitle}>
-              How's your energy for this?
+              How’s your energy for this?
             </ThemedText>
-            
+
             {selectedTask ? (
-              <View style={[styles.selectedTaskCard, { backgroundColor: theme.backgroundDefault }]}>
-                <ThemedText style={styles.selectedTaskName}>{selectedTask.title}</ThemedText>
+              <View
+                style={[
+                  styles.selectedTaskCard,
+                  { backgroundColor: theme.backgroundDefault },
+                ]}
+              >
+                <ThemedText style={styles.selectedTaskName}>
+                  {selectedTask.title}
+                </ThemedText>
               </View>
             ) : null}
-            
-            <ThemedText style={[styles.energyCheckHint, { color: theme.textSecondary }]}>
+
+            <ThemedText
+              style={[styles.energyCheckHint, { color: theme.textSecondary }]}
+            >
               This helps show the right first bite for you
             </ThemedText>
 
             <View style={styles.energyOptions}>
               <Pressable
                 onPress={() => handleEnergySelect("low")}
-                style={[styles.energyOption, { backgroundColor: theme.roomGentle }]}
+                style={[
+                  styles.energyOption,
+                  { backgroundColor: theme.roomGentle },
+                ]}
               >
                 <Feather name="cloud" size={24} color={theme.text} />
                 <ThemedText style={styles.energyOptionLabel}>Low</ThemedText>
-                <ThemedText style={[styles.energyOptionHint, { color: theme.textSecondary }]}>
+                <ThemedText
+                  style={[
+                    styles.energyOptionHint,
+                    { color: theme.textSecondary },
+                  ]}
+                >
                   Gentle
                 </ThemedText>
               </Pressable>
-              
+
               <Pressable
                 onPress={() => handleEnergySelect("medium")}
-                style={[styles.energyOption, { backgroundColor: theme.roomBuild }]}
+                style={[
+                  styles.energyOption,
+                  { backgroundColor: theme.roomBuild },
+                ]}
               >
                 <Feather name="sun" size={24} color={theme.text} />
                 <ThemedText style={styles.energyOptionLabel}>Medium</ThemedText>
-                <ThemedText style={[styles.energyOptionHint, { color: theme.textSecondary }]}>
+                <ThemedText
+                  style={[
+                    styles.energyOptionHint,
+                    { color: theme.textSecondary },
+                  ]}
+                >
                   Steady
                 </ThemedText>
               </Pressable>
-              
+
               <Pressable
                 onPress={() => handleEnergySelect("high")}
-                style={[styles.energyOption, { backgroundColor: theme.roomRepair }]}
+                style={[
+                  styles.energyOption,
+                  { backgroundColor: theme.roomRepair },
+                ]}
               >
                 <Feather name="zap" size={24} color={theme.text} />
                 <ThemedText style={styles.energyOptionLabel}>High</ThemedText>
-                <ThemedText style={[styles.energyOptionHint, { color: theme.textSecondary }]}>
+                <ThemedText
+                  style={[
+                    styles.energyOptionHint,
+                    { color: theme.textSecondary },
+                  ]}
+                >
                   Full
                 </ThemedText>
               </Pressable>
@@ -601,19 +660,40 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  greetingContainer: {
-    marginBottom: 0,
+  weeklyRoomWrapper: {
+    marginTop: Spacing.lg,
   },
-  greeting: {
-    marginBottom: Spacing.xs,
-  },
-  subGreeting: {
-    fontStyle: "italic",
-  },
-  energyContainer: {
-    flexDirection: "row",
+  mainCard: {
+    marginTop: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.lg,
     gap: Spacing.sm,
-    marginBottom: Spacing.lg,
+  },
+  mainTitle: {
+    lineHeight: 24,
+  },
+  mainSubtitle: {
+    fontSize: 14,
+  },
+  mainButton: {
+    minHeight: 44,
+    borderRadius: BorderRadius.xs,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  mainButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  secondaryLink: {
+    paddingVertical: Spacing.sm,
+  },
+  secondaryLinkText: {
+    fontSize: 14,
+    fontStyle: "italic",
   },
   section: {
     marginTop: Spacing.lg,
@@ -626,33 +706,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.sm,
-    marginTop: Spacing.lg,
-    marginRight: 72,
-  },
-  weeklyRoomWrapper: {
-    marginTop: Spacing.lg,
-  },
-  dayEndedCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.sm,
-    marginTop: Spacing.lg,
-  },
-  dayEndedText: {
-    fontSize: 15,
-    fontStyle: "italic",
-  },
-  dayEndedLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-    flex: 1,
-  },
-  dayEndedUndo: {
-    fontSize: 13,
-    fontStyle: "italic",
+    marginTop: Spacing.xl,
   },
   endDayIcon: {
     width: 40,
@@ -672,6 +726,47 @@ const styles = StyleSheet.create({
   },
   endDaySubtitle: {
     fontSize: 14,
+  },
+  dayEndedCard: {
+    marginTop: Spacing.xl,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+  },
+  dayEndedLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    flex: 1,
+  },
+  dayEndedText: {
+    fontSize: 15,
+    fontStyle: "italic",
+  },
+  dayEndedUndo: {
+    fontSize: 13,
+    fontStyle: "italic",
+  },
+  statRow: {
+    flexDirection: "row",
+    paddingVertical: Spacing.sm,
+    alignItems: "center",
+  },
+  statBlock: {
+    flex: 1,
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  statLabel: {
+    fontSize: 12,
+    textAlign: "center",
+  },
+  statDivider: {
+    width: 1,
+    alignSelf: "stretch",
+    marginHorizontal: Spacing.md,
   },
   modalOverlay: {
     flex: 1,
@@ -711,29 +806,30 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: Spacing.xs,
   },
-  statLabel: {
-    fontSize: 14,
-  },
-  rewardCard: {
+  reflectionSection: {
     width: "100%",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.sm,
-    alignItems: "center",
     marginBottom: Spacing.lg,
   },
-  rewardTitle: {
+  reflectionLabel: {
     fontSize: 14,
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.sm,
+    fontStyle: "italic",
   },
-  rewardItem: {
-    fontSize: 18,
-    fontWeight: "500",
+  reflectionInput: {
+    width: "100%",
+    minHeight: 80,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    fontSize: 15,
+    textAlignVertical: "top",
   },
   confirmButton: {
     width: "100%",
-    padding: Spacing.md,
+    minHeight: 44,
     borderRadius: BorderRadius.sm,
     alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing.sm,
   },
   confirmButtonText: {
@@ -743,43 +839,6 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     padding: Spacing.sm,
-  },
-  emptyStateCard: {
-    marginTop: Spacing.lg,
-    padding: Spacing.xl,
-    borderRadius: BorderRadius.md,
-    alignItems: "center",
-  },
-  emptyStateIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: Spacing.md,
-  },
-  emptyStateTitle: {
-    textAlign: "center",
-    marginBottom: Spacing.sm,
-  },
-  emptyStateText: {
-    textAlign: "center",
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: Spacing.lg,
-  },
-  emptyStateButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.sm,
-  },
-  emptyStateButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    fontSize: 16,
   },
   energyCheckContent: {
     width: "100%",
@@ -834,163 +893,5 @@ const styles = StyleSheet.create({
   },
   skipEnergyButton: {
     padding: Spacing.sm,
-  },
-  reflectionSection: {
-    width: "100%",
-    marginBottom: Spacing.lg,
-  },
-  reflectionLabel: {
-    fontSize: 14,
-    marginBottom: Spacing.sm,
-    fontStyle: "italic",
-  },
-  reflectionInput: {
-    width: "100%",
-    minHeight: 80,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.sm,
-    borderWidth: 1,
-    fontSize: 15,
-    textAlignVertical: "top",
-  },
-  quietRoomWrapper: {
-    marginTop: Spacing.md,
-  },
-  bodyDoublingPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    marginTop: Spacing.sm,
-  },
-  bodyDoublingText: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  pulsingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  chaosCard: {
-    marginTop: Spacing.lg,
-    padding: Spacing.xl,
-    borderRadius: BorderRadius.md,
-    alignItems: "center",
-    gap: Spacing.lg,
-  },
-  chaosTitle: {
-    textAlign: "center",
-    lineHeight: 26,
-  },
-  chaosButton: {
-    width: "100%",
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.sm,
-    alignItems: "center",
-  },
-  chaosButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  subtleLink: {
-    marginTop: Spacing.md,
-    alignItems: "center",
-    paddingVertical: Spacing.sm,
-  },
-  subtleLinkText: {
-    fontSize: 14,
-    fontStyle: "italic",
-  },
-  dopamineCard: {
-    marginTop: Spacing.lg,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.sm,
-    gap: Spacing.sm,
-  },
-  dopamineHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-  },
-  dopamineTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  dopamineSubtitle: {
-    fontSize: 13,
-    fontStyle: "italic",
-  },
-  dopamineList: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.sm,
-    marginTop: Spacing.sm,
-  },
-  dopaminePill: {
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.full,
-  },
-  dopaminePillText: {
-    fontSize: 14,
-  },
-  dopamineEmptyLink: {
-    marginTop: Spacing.sm,
-  },
-  dopamineEmptyText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  statRow: {
-    marginTop: Spacing.lg,
-    flexDirection: "row",
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.sm,
-    alignItems: "center",
-  },
-  statBlock: {
-    flex: 1,
-    alignItems: "center",
-    gap: Spacing.xs,
-  },
-  statBlockLabel: {
-    fontSize: 12,
-    textAlign: "center",
-  },
-  statDivider: {
-    width: 1,
-    alignSelf: "stretch",
-    marginHorizontal: Spacing.md,
-  },
-  repairCard: {
-    marginTop: Spacing.lg,
-    flexDirection: "row",
-    alignItems: "center",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.sm,
-  },
-  repairIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.xs,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: Spacing.md,
-  },
-  repairTextContainer: {
-    flex: 1,
-  },
-  repairTitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    marginBottom: 2,
-  },
-  repairSubtitle: {
-    fontSize: 13,
   },
 });
