@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { View, StyleSheet, Dimensions } from "react-native";
+import { View, StyleSheet, Dimensions, Pressable } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
@@ -25,17 +25,19 @@ interface SwipeableThoughtCardProps {
   thought: ThoughtItem;
   onVent: (id: string) => void;
   onConvertToTask: (thought: ThoughtItem) => void;
+  onBreakIntoBites: (thought: ThoughtItem) => void;
 }
 
 export function SwipeableThoughtCard({
   thought,
   onVent,
   onConvertToTask,
+  onBreakIntoBites,
 }: SwipeableThoughtCardProps) {
   const { theme } = useTheme();
   const translateX = useSharedValue(0);
   const cardOpacity = useSharedValue(1);
-  const cardHeight = useSharedValue(72);
+  const cardHeight = useSharedValue(128);
 
   const handleVent = useCallback(() => {
     triggerHaptic("heavy");
@@ -46,6 +48,11 @@ export function SwipeableThoughtCard({
     triggerHaptic("success");
     onConvertToTask(thought);
   }, [onConvertToTask, thought]);
+
+  const handleBreakIntoBites = useCallback(() => {
+    triggerHaptic("success");
+    onBreakIntoBites(thought);
+  }, [onBreakIntoBites, thought]);
 
   const panGesture = Gesture.Pan()
     .activeOffsetX([-10, 10])
@@ -76,9 +83,9 @@ export function SwipeableThoughtCard({
     height: cardHeight.value,
     marginBottom: interpolate(
       cardHeight.value,
-      [0, 72],
+      [0, 128],
       [0, Spacing.sm],
-      Extrapolation.CLAMP
+      Extrapolation.CLAMP,
     ),
   }));
 
@@ -87,7 +94,7 @@ export function SwipeableThoughtCard({
       translateX.value,
       [0, SWIPE_THRESHOLD],
       [0, 1],
-      Extrapolation.CLAMP
+      Extrapolation.CLAMP,
     );
     return { opacity };
   });
@@ -97,7 +104,7 @@ export function SwipeableThoughtCard({
       translateX.value,
       [-SWIPE_THRESHOLD, 0],
       [1, 0],
-      Extrapolation.CLAMP
+      Extrapolation.CLAMP,
     );
     return { opacity };
   });
@@ -107,7 +114,7 @@ export function SwipeableThoughtCard({
       translateX.value,
       [0, SWIPE_THRESHOLD * 0.5, SWIPE_THRESHOLD],
       [0.5, 0.8, 1],
-      Extrapolation.CLAMP
+      Extrapolation.CLAMP,
     );
     return { transform: [{ scale }] };
   });
@@ -117,7 +124,7 @@ export function SwipeableThoughtCard({
       translateX.value,
       [-SWIPE_THRESHOLD, -SWIPE_THRESHOLD * 0.5, 0],
       [1, 0.8, 0.5],
-      Extrapolation.CLAMP
+      Extrapolation.CLAMP,
     );
     return { transform: [{ scale }] };
   });
@@ -163,6 +170,48 @@ export function SwipeableThoughtCard({
           <ThemedText numberOfLines={2} style={styles.thoughtText}>
             {thought.text}
           </ThemedText>
+          <View style={styles.actionRow}>
+            <Pressable
+              onPress={handleVent}
+              accessibilityRole="button"
+              accessibilityLabel="Let this thought go"
+              style={[styles.inlineAction, { borderColor: theme.border }]}
+            >
+              <ThemedText
+                style={[
+                  styles.inlineActionText,
+                  { color: theme.textSecondary },
+                ]}
+              >
+                Let go
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={handleConvert}
+              accessibilityRole="button"
+              accessibilityLabel="Turn this thought into a task"
+              style={[styles.inlineAction, { borderColor: theme.border }]}
+            >
+              <ThemedText
+                style={[styles.inlineActionText, { color: theme.text }]}
+              >
+                Task it
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={handleBreakIntoBites}
+              accessibilityRole="button"
+              accessibilityLabel="Break this thought into bites"
+              style={[
+                styles.inlineAction,
+                { backgroundColor: theme.primary, borderColor: theme.primary },
+              ]}
+            >
+              <ThemedText style={styles.primaryInlineActionText}>
+                Bites
+              </ThemedText>
+            </Pressable>
+          </View>
         </Animated.View>
       </GestureDetector>
     </View>
@@ -204,10 +253,33 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.sm,
     justifyContent: "center",
-    minHeight: 56,
+    minHeight: 112,
   },
   thoughtText: {
     fontSize: 15,
     lineHeight: 22,
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  inlineAction: {
+    minHeight: 44,
+    flex: 1,
+    borderRadius: BorderRadius.xs,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: Spacing.sm,
+  },
+  inlineActionText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  primaryInlineActionText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "600",
   },
 });

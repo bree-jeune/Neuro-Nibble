@@ -20,13 +20,22 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { DynamicFooter } from "@/components/DynamicFooter";
 import { WeeklyRoomSection } from "@/components/WeeklyRoomSection";
-import { QuietRoomPreviewCard } from "@/components/QuietRoomPreviewCard";
 import { RecentTaskCard } from "@/components/RecentTaskCard";
+import { RegulationBreathingCard } from "@/components/RegulationBreathingCard";
+import { SupportToolCard } from "@/components/SupportToolCard";
 import { useAppStore } from "@/lib/store";
 import { useSnackbarStore } from "@/lib/snackbarStore";
 import { useAudio } from "@/lib/AudioContext";
+import { usePresence } from "@/hooks/usePresence";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
-import type { EnergyLevel, Task } from "@/lib/types";
+import type { EnergyLevel, QuietRoomMode, Task, WeeklyRoom } from "@/lib/types";
+
+const QUIET_ROOM_MODE_LABELS: Record<QuietRoomMode, string> = {
+  silent: "Silent Company",
+  gentle: "Gentle Start",
+  sprint: "Sprint Room",
+  recovery: "Recovery Room",
+};
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -52,15 +61,21 @@ export default function HomeScreen() {
     energyCheckInEnabled,
     displayName,
     addDailyReflection,
+    dailyReflections,
+    thoughtDump,
+    quietRoomMode,
   } = useAppStore();
   const showSnackbar = useSnackbarStore((s) => s.show);
   const { startAudio } = useAudio();
+  const { total: quietRoomPresence } = usePresence();
 
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => null,
     });
   }, [navigation]);
+
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
   const recentTasks = useMemo(
     () =>
@@ -81,7 +96,6 @@ export default function HomeScreen() {
   );
 
   const completedToday = useMemo(() => {
-    const today = new Date().toISOString().split("T")[0];
     return tasks.reduce((count, task) => {
       return (
         count +
@@ -90,7 +104,7 @@ export default function HomeScreen() {
         ).length
       );
     }, 0);
-  }, [tasks]);
+  }, [tasks, today]);
 
   const incompleteCount = useMemo(
     () =>
@@ -103,16 +117,30 @@ export default function HomeScreen() {
     [tasks],
   );
 
-  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
-  const hasStartedToday = useMemo(
-    () =>
-      tasks.some(
-        (task) =>
-          task.createdAt?.startsWith(today) ||
-          task.lastWorkedOn?.startsWith(today),
-      ) || completedToday > 0,
-    [completedToday, tasks, today],
-  );
+  const hasStartedToday = useMemo(() => {
+    const tasksCreatedToday = tasks.some((task) =>
+      task.createdAt?.startsWith(today),
+    );
+    const tasksWorkedToday = tasks.some((task) =>
+      task.lastWorkedOn?.startsWith(today),
+    );
+    const reflectionToday = dailyReflections.some(
+      (entry) => entry.date === today,
+    );
+    const thoughtDumpToday = thoughtDump.some((entry) =>
+      entry.createdAt?.startsWith(today),
+    );
+
+    return (
+      tasksCreatedToday ||
+      tasksWorkedToday ||
+      completedToday > 0 ||
+      reflectionToday ||
+      thoughtDumpToday
+    );
+  }, [completedToday, dailyReflections, tasks, thoughtDump, today]);
+
+  const isBookendForToday = bookendCompleted && lastBookendDate === today;
 
   const handleTaskPress = useCallback(
     (task: Task) => {
@@ -200,169 +228,182 @@ export default function HomeScreen() {
     [navigation],
   );
 
-  const renderMainAction = () => {
-    const isBuildEmpty =
-      weeklyRoom === "build" && incompleteCount === 0 && completedToday === 0;
+  const primaryContent = useMemo(() => {
+    const isBuildEmpty = incompleteCount === 0 && completedToday === 0;
 
-    if (weeklyRoom === "chaos") {
-      return (
-        <View
-          style={[
-            styles.mainCard,
-            { backgroundColor: theme.backgroundDefault },
-          ]}
-        >
-          <ThemedText type="h3" style={styles.mainTitle}>
-            Start with one thing
-          </ThemedText>
-          <ThemedText
-            style={[styles.mainSubtitle, { color: theme.textSecondary }]}
-          >
-            We’ll make it smaller.
-          </ThemedText>
-          <Pressable
-            onPress={() => navigation.navigate("BreakItDown")}
-            accessibilityRole="button"
-            accessibilityLabel="Start with one thing"
-            style={[styles.mainButton, { backgroundColor: theme.primary }]}
-          >
-            <ThemedText style={styles.mainButtonText}>Start</ThemedText>
-          </Pressable>
-          <Pressable
-            onPress={() => navigateToTab("ReflectTab")}
-            style={styles.secondaryLink}
-          >
-            <ThemedText
-              style={[styles.secondaryLinkText, { color: theme.textSecondary }]}
-            >
-              Dump thoughts first →
-            </ThemedText>
-          </Pressable>
-        </View>
-      );
-    }
+    const contentByRoom: Record<
+      WeeklyRoom,
+      {
+        title: string;
+        subtitle: string;
+        buttonLabel: string;
+        accessibilityLabel: string;
+        onPress: () => void;
+      }
+    > = {
+      chaos: {
+        title: "Start here",
+        subtitle: "What would make today less bad?",
+        buttonLabel: "Deal with one thing",
+        accessibilityLabel: "Deal with one urgent useful thing",
+        onPress: () => navigation.navigate("BreakItDown"),
+      },
+      gentle: {
+        title: "Start soft",
+        subtitle: "Choose one bite. You can stop after that.",
+        buttonLabel: "Choose one gentle bite",
+        accessibilityLabel: "Choose one gentle bite",
+        onPress: () =>
+          recentTasks[0]
+            ? handleTaskPress(recentTasks[0])
+            : navigation.navigate("BreakItDown"),
+      },
+      build: {
+        title: isBuildEmpty ? "Start momentum" : "Move forward",
+        subtitle: isBuildEmpty
+          ? "One small move creates the trail."
+          : "Start one useful thing.",
+        buttonLabel: isBuildEmpty ? "Start" : "Keep going",
+        accessibilityLabel: isBuildEmpty ? "Start momentum" : "Keep going",
+        onPress: () =>
+          recentTasks[0]
+            ? handleTaskPress(recentTasks[0])
+            : navigation.navigate("BreakItDown"),
+      },
+      repair: {
+        title: "Re-enter",
+        subtitle: "Pick one thing back up without shame.",
+        buttonLabel: "Pick one thing",
+        accessibilityLabel: "Pick one thing to re-enter",
+        onPress: () =>
+          recentTasks[0]
+            ? handleTaskPress(recentTasks[0])
+            : navigateToTab("TasksTab"),
+      },
+    };
 
-    if (weeklyRoom === "gentle") {
-      return (
-        <View
-          style={[
-            styles.mainCard,
-            { backgroundColor: theme.backgroundDefault },
-          ]}
-        >
-          <ThemedText type="h3" style={styles.mainTitle}>
-            Choose one gentle bite
-          </ThemedText>
-          <ThemedText
-            style={[styles.mainSubtitle, { color: theme.textSecondary }]}
-          >
-            You can stop after that.
-          </ThemedText>
-          <Pressable
-            onPress={() =>
-              recentTasks[0]
-                ? handleTaskPress(recentTasks[0])
-                : navigation.navigate("BreakItDown")
-            }
-            accessibilityRole="button"
-            accessibilityLabel="Start one gentle bite"
-            style={[styles.mainButton, { backgroundColor: theme.primary }]}
-          >
-            <ThemedText style={styles.mainButtonText}>Start</ThemedText>
-          </Pressable>
-        </View>
-      );
-    }
-
-    if (weeklyRoom === "build") {
-      return (
-        <View
-          style={[
-            styles.mainCard,
-            { backgroundColor: theme.backgroundDefault },
-          ]}
-        >
-          <ThemedText type="h3" style={styles.mainTitle}>
-            {isBuildEmpty ? "Start momentum" : "Build from momentum"}
-          </ThemedText>
-          {isBuildEmpty ? (
-            <ThemedText
-              style={[styles.mainSubtitle, { color: theme.textSecondary }]}
-            >
-              One small move creates the trail.
-            </ThemedText>
-          ) : (
-            <View style={styles.statRow}>
-              <View style={styles.statBlock}>
-                <ThemedText type="h2" style={{ color: theme.primary }}>
-                  {incompleteCount}
-                </ThemedText>
-                <ThemedText
-                  style={[styles.statLabel, { color: theme.textSecondary }]}
-                >
-                  active tasks
-                </ThemedText>
-              </View>
-              <View
-                style={[styles.statDivider, { backgroundColor: theme.border }]}
-              />
-              <View style={styles.statBlock}>
-                <ThemedText type="h2" style={{ color: theme.primary }}>
-                  {completedToday}
-                </ThemedText>
-                <ThemedText
-                  style={[styles.statLabel, { color: theme.textSecondary }]}
-                >
-                  bites done today
-                </ThemedText>
-              </View>
-            </View>
-          )}
-          <Pressable
-            onPress={() =>
-              recentTasks[0]
-                ? handleTaskPress(recentTasks[0])
-                : navigation.navigate("BreakItDown")
-            }
-            accessibilityRole="button"
-            accessibilityLabel={isBuildEmpty ? "Start momentum" : "Keep going"}
-            style={[styles.mainButton, { backgroundColor: theme.primary }]}
-          >
-            <ThemedText style={styles.mainButtonText}>
-              {isBuildEmpty ? "Start" : "Keep going"}
-            </ThemedText>
-          </Pressable>
-        </View>
-      );
-    }
+    const config = contentByRoom[weeklyRoom];
 
     return (
       <View
-        style={[styles.mainCard, { backgroundColor: theme.backgroundDefault }]}
+        style={[
+          styles.sectionCard,
+          { backgroundColor: theme.backgroundDefault },
+        ]}
       >
         <ThemedText type="h3" style={styles.mainTitle}>
-          Pick one thing back up
+          {config.title}
         </ThemedText>
         <ThemedText
           style={[styles.mainSubtitle, { color: theme.textSecondary }]}
         >
-          No shame. Just re-enter.
+          {config.subtitle}
         </ThemedText>
+
+        {weeklyRoom === "build" && !isBuildEmpty ? (
+          <View style={styles.statRow}>
+            <View style={styles.statBlock}>
+              <ThemedText type="h2" style={{ color: theme.primary }}>
+                {incompleteCount}
+              </ThemedText>
+              <ThemedText
+                style={[styles.statLabel, { color: theme.textSecondary }]}
+              >
+                active tasks
+              </ThemedText>
+            </View>
+            <View
+              style={[styles.statDivider, { backgroundColor: theme.border }]}
+            />
+            <View style={styles.statBlock}>
+              <ThemedText type="h2" style={{ color: theme.primary }}>
+                {completedToday}
+              </ThemedText>
+              <ThemedText
+                style={[styles.statLabel, { color: theme.textSecondary }]}
+              >
+                bites done today
+              </ThemedText>
+            </View>
+          </View>
+        ) : null}
+
         <Pressable
-          onPress={() =>
-            recentTasks[0]
-              ? handleTaskPress(recentTasks[0])
-              : navigateToTab("TasksTab")
-          }
+          onPress={config.onPress}
           accessibilityRole="button"
-          accessibilityLabel="Pick one thing to re-enter"
+          accessibilityLabel={config.accessibilityLabel}
           style={[styles.mainButton, { backgroundColor: theme.primary }]}
         >
-          <ThemedText style={styles.mainButtonText}>Pick one</ThemedText>
+          <ThemedText style={styles.mainButtonText}>
+            {config.buttonLabel}
+          </ThemedText>
         </Pressable>
       </View>
     );
-  };
+  }, [
+    completedToday,
+    handleTaskPress,
+    incompleteCount,
+    navigateToTab,
+    navigation,
+    recentTasks,
+    theme.backgroundDefault,
+    theme.border,
+    theme.primary,
+    theme.textSecondary,
+    weeklyRoom,
+  ]);
+
+  const supportTools = useMemo(() => {
+    const brainDumpTool = (
+      <SupportToolCard
+        key="brain-dump"
+        title="Brain Dump"
+        subtitle="Offload mental noise before choosing your next step."
+        icon="edit-3"
+        onPress={() => navigateToTab("ReflectTab")}
+        accessibilityLabel="Open Brain Dump"
+        featured={weeklyRoom === "chaos"}
+      />
+    );
+
+    const dopamineTool = (
+      <SupportToolCard
+        key="dopamine"
+        title="Dopamine Menu"
+        subtitle="Pick a tiny reward to make starting easier."
+        icon="gift"
+        onPress={() => navigateToTab("ReflectTab")}
+        accessibilityLabel="Open Dopamine Menu"
+        featured={weeklyRoom === "gentle"}
+      />
+    );
+
+    const quietRoomTool = (
+      <SupportToolCard
+        key="quiet-room"
+        title="Quiet Room"
+        subtitle={`${quietRoomPresence} here with you - ${QUIET_ROOM_MODE_LABELS[quietRoomMode]}`}
+        icon="moon"
+        onPress={() => {
+          triggerHaptic("selection");
+          navigation.navigate("QuietRoom");
+        }}
+        accessibilityLabel="Enter Quiet Room"
+      />
+    );
+
+    const breathingTool = <RegulationBreathingCard key="breathe" />;
+
+    const toolsByRoom: Record<WeeklyRoom, React.ReactNode[]> = {
+      chaos: [breathingTool, brainDumpTool, quietRoomTool],
+      gentle: [dopamineTool, brainDumpTool, quietRoomTool],
+      build: [dopamineTool, quietRoomTool, brainDumpTool],
+      repair: [brainDumpTool, quietRoomTool, dopamineTool],
+    };
+
+    return toolsByRoom[weeklyRoom];
+  }, [navigateToTab, navigation, quietRoomMode, quietRoomPresence, weeklyRoom]);
 
   return (
     <>
@@ -372,6 +413,7 @@ export default function HomeScreen() {
           paddingTop: headerHeight + Spacing.sm,
           paddingBottom: tabBarHeight + Spacing.xl + 24,
           paddingHorizontal: Spacing.lg,
+          gap: Spacing.lg,
         }}
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
@@ -384,82 +426,52 @@ export default function HomeScreen() {
           </ThemedText>
         </View>
 
-        <View style={styles.weeklyRoomWrapper}>
-          <WeeklyRoomSection room={weeklyRoom} compact />
+        <WeeklyRoomSection room={weeklyRoom} />
+
+        <View style={styles.sectionBlock}>
+          <ThemedText type="h3" style={styles.sectionTitle}>
+            Your next move
+          </ThemedText>
+          {primaryContent}
         </View>
 
-        <View style={styles.choiceHeader}>
-          <ThemedText type="h3">What do you need?</ThemedText>
-        </View>
-
-        {renderMainAction()}
-
-        <View style={styles.quickActionsGrid}>
-          <Pressable
-            onPress={() => navigation.navigate("BreakItDown")}
-            accessibilityRole="button"
-            accessibilityLabel="Start one thing"
+        <View style={styles.sectionBlock}>
+          <ThemedText type="h3" style={styles.sectionTitle}>
+            Support tools
+          </ThemedText>
+          <View
             style={[
-              styles.quickActionCard,
+              styles.sectionCard,
               { backgroundColor: theme.backgroundDefault },
             ]}
           >
-            <ThemedText style={styles.quickActionTitle}>
-              Start one thing
-            </ThemedText>
-            <ThemedText
-              style={[
-                styles.quickActionSubtitle,
-                { color: theme.textSecondary },
-              ]}
-            >
-              Begin with the first tiny bite.
-            </ThemedText>
-          </Pressable>
-
-          <Pressable
-            onPress={() => navigateToTab("ReflectTab")}
-            accessibilityRole="button"
-            accessibilityLabel="Dump thoughts"
-            style={[
-              styles.quickActionCard,
-              { backgroundColor: theme.backgroundDefault },
-            ]}
-          >
-            <ThemedText style={styles.quickActionTitle}>
-              Dump thoughts
-            </ThemedText>
-            <ThemedText
-              style={[
-                styles.quickActionSubtitle,
-                { color: theme.textSecondary },
-              ]}
-            >
-              Offload mental noise first.
-            </ThemedText>
-          </Pressable>
-
-          <QuietRoomPreviewCard
-            onPress={() => navigation.navigate("QuietRoom")}
-          />
+            {supportTools}
+          </View>
         </View>
 
         {recentTasks.length > 0 ? (
-          <View style={styles.section}>
+          <View style={styles.sectionBlock}>
             <ThemedText type="h3" style={styles.sectionTitle}>
-              Recent tasks
+              Continue
             </ThemedText>
-            {recentTasks.map((task) => (
-              <RecentTaskCard
-                key={task.id}
-                task={task}
-                onPress={() => handleTaskPress(task)}
-              />
-            ))}
+            <View
+              style={[
+                styles.sectionCard,
+                { backgroundColor: theme.backgroundDefault },
+              ]}
+            >
+              {recentTasks.map((task) => (
+                <RecentTaskCard
+                  key={task.id}
+                  task={task}
+                  onPress={() => handleTaskPress(task)}
+                />
+              ))}
+            </View>
           </View>
         ) : null}
 
-        {hasStartedToday && !bookendCompleted ? (
+        {hasStartedToday && !isBookendForToday ? (
           <Pressable
             onPress={() => setShowEndDayModal(true)}
             accessibilityRole="button"
@@ -709,15 +721,14 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  weeklyRoomWrapper: {
-    marginTop: Spacing.md,
+  sectionBlock: {
+    gap: Spacing.sm,
   },
-  choiceHeader: {
-    marginTop: Spacing.lg,
+  sectionTitle: {
+    paddingHorizontal: Spacing.xs,
   },
-  mainCard: {
-    marginTop: Spacing.md,
-    borderRadius: BorderRadius.sm,
+  sectionCard: {
+    borderRadius: BorderRadius.md,
     padding: Spacing.lg,
     gap: Spacing.sm,
   },
@@ -740,41 +751,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
   },
-  secondaryLink: {
-    paddingVertical: Spacing.sm,
-  },
-  secondaryLinkText: {
-    fontSize: 14,
-    fontStyle: "italic",
-  },
-  section: {
-    marginTop: Spacing.lg,
-  },
-  sectionTitle: {
-    marginBottom: Spacing.md,
-  },
-  quickActionsGrid: {
-    marginTop: Spacing.md,
-    gap: Spacing.sm,
-  },
-  quickActionCard: {
-    borderRadius: BorderRadius.sm,
-    padding: Spacing.md,
-    gap: Spacing.xs,
-  },
-  quickActionTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  quickActionSubtitle: {
-    fontSize: 13,
-  },
   endDayButton: {
     flexDirection: "row",
     alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.sm,
-    marginTop: Spacing.xl,
+    marginTop: Spacing.sm,
   },
   endDayIcon: {
     width: 40,

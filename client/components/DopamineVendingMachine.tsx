@@ -1,5 +1,12 @@
 import React, { useState, useCallback } from "react";
-import { View, StyleSheet, Pressable, FlatList, TextInput, Dimensions } from "react-native";
+import {
+  View,
+  StyleSheet,
+  Pressable,
+  FlatList,
+  TextInput,
+  Dimensions,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { triggerHaptic } from "@/lib/haptics";
 
@@ -13,14 +20,33 @@ interface DopamineVendingMachineProps {
   items: DopamineItem[];
   onAddItem: (text: string, cost: DopamineCost) => void;
   onRemoveItem: (id: string) => void;
+  onRestoreDefaults: () => void;
 }
 
-const COST_CONFIG: Record<DopamineCost, { label: string; time: string; color: string; lightColor: string }> = {
+const COST_CONFIG: Record<
+  DopamineCost,
+  { label: string; time: string; color: string; lightColor: string }
+> = {
   tiny: { label: "Tiny", time: "1m", color: "#7BB3C9", lightColor: "#E3F0F5" },
-  micro: { label: "Micro", time: "3m", color: "#7B9EA8", lightColor: "#E3ECF0" },
-  snack: { label: "Snack", time: "5m", color: "#A98BC9", lightColor: "#EDE3F5" },
+  micro: {
+    label: "Micro",
+    time: "3m",
+    color: "#7B9EA8",
+    lightColor: "#E3ECF0",
+  },
+  snack: {
+    label: "Snack",
+    time: "5m",
+    color: "#A98BC9",
+    lightColor: "#EDE3F5",
+  },
   meal: { label: "Meal", time: "10m", color: "#C9A87B", lightColor: "#F5EDE3" },
-  recovery: { label: "Recovery", time: "rest", color: "#A8BAA8", lightColor: "#E8F0E8" },
+  recovery: {
+    label: "Recovery",
+    time: "rest",
+    color: "#A8BAA8",
+    lightColor: "#E8F0E8",
+  },
 };
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -63,7 +89,10 @@ function TreatCard({
           <Feather name="x" size={16} color={theme.textSecondary} />
         </Pressable>
       </View>
-      <ThemedText style={[styles.cardText, { color: theme.text }]} numberOfLines={3}>
+      <ThemedText
+        style={[styles.cardText, { color: theme.text }]}
+        numberOfLines={3}
+      >
         {item.text}
       </ThemedText>
     </View>
@@ -95,7 +124,9 @@ function CostSelector({
             style={[
               styles.costOption,
               {
-                backgroundColor: isSelected ? config.color : theme.backgroundSecondary,
+                backgroundColor: isSelected
+                  ? config.color
+                  : theme.backgroundSecondary,
                 borderColor: isSelected ? config.color : theme.border,
               },
             ]}
@@ -119,6 +150,7 @@ export function DopamineVendingMachine({
   items,
   onAddItem,
   onRemoveItem,
+  onRestoreDefaults,
 }: DopamineVendingMachineProps) {
   const { theme } = useTheme();
   const [showRewardModal, setShowRewardModal] = useState(false);
@@ -155,7 +187,7 @@ export function DopamineVendingMachine({
         onPress={handleOpenReward}
         disabled={items.length === 0}
         accessibilityRole="button"
-        accessibilityLabel="Open reward picker"
+        accessibilityLabel="Vend reward"
         style={[
           styles.spinButton,
           {
@@ -175,7 +207,7 @@ export function DopamineVendingMachine({
             { color: items.length === 0 ? theme.textSecondary : "#FFFFFF" },
           ]}
         >
-          Pick a reward
+          Vend reward
         </ThemedText>
       </Pressable>
 
@@ -190,19 +222,50 @@ export function DopamineVendingMachine({
           contentContainerStyle={styles.grid}
         />
       ) : (
-        <View style={[styles.emptyState, { backgroundColor: theme.backgroundSecondary }]}>
+        <View
+          style={[
+            styles.emptyState,
+            { backgroundColor: theme.backgroundSecondary },
+          ]}
+        >
           <Feather name="gift" size={32} color={theme.textSecondary} />
-          <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
-            Your vending machine is empty
+          <ThemedText
+            style={[styles.emptyText, { color: theme.textSecondary }]}
+          >
+            Need ideas?
           </ThemedText>
-          <ThemedText style={[styles.emptySubtext, { color: theme.textSecondary }]}>
-            Add some treats below
+          <ThemedText
+            style={[styles.emptySubtext, { color: theme.textSecondary }]}
+          >
+            Add starter rewards or make your own.
           </ThemedText>
+          <Pressable
+            onPress={() => {
+              triggerHaptic("success");
+              onRestoreDefaults();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Add starter rewards"
+            style={[styles.restoreButton, { backgroundColor: theme.primary }]}
+          >
+            <Feather name="plus-circle" size={18} color="#FFFFFF" />
+            <ThemedText style={styles.restoreButtonText}>
+              Add starter rewards
+            </ThemedText>
+          </Pressable>
         </View>
       )}
 
       <View style={styles.addSection}>
-        <View style={[styles.inputRow, { backgroundColor: theme.inputBackground, borderColor: theme.border }]}>
+        <View
+          style={[
+            styles.inputRow,
+            {
+              backgroundColor: theme.inputBackground,
+              borderColor: theme.border,
+            },
+          ]}
+        >
           <TextInput
             style={[styles.input, { color: theme.text }]}
             placeholder="Add a dopamine treat..."
@@ -219,7 +282,11 @@ export function DopamineVendingMachine({
             accessibilityLabel="Add treat"
             style={[
               styles.addButton,
-              { backgroundColor: newItemText.trim() ? theme.primary : theme.backgroundSecondary },
+              {
+                backgroundColor: newItemText.trim()
+                  ? theme.primary
+                  : theme.backgroundSecondary,
+              },
             ]}
           >
             <Feather
@@ -235,6 +302,7 @@ export function DopamineVendingMachine({
       <RewardRevealModal
         visible={showRewardModal}
         items={items}
+        onRestoreDefaults={onRestoreDefaults}
         onClose={() => setShowRewardModal(false)}
       />
     </View>
@@ -296,8 +364,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
     borderRadius: BorderRadius.md,
-    gap: Spacing.xs,
+    gap: Spacing.sm,
   },
   emptyText: {
     fontSize: 16,
@@ -306,6 +375,22 @@ const styles = StyleSheet.create({
   emptySubtext: {
     fontSize: 13,
     fontStyle: "italic",
+    textAlign: "center",
+  },
+  restoreButton: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.xs,
+  },
+  restoreButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
   },
   addSection: {
     gap: Spacing.sm,

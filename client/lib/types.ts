@@ -43,6 +43,7 @@ export interface ThoughtItem {
   id: string;
   text: string;
   createdAt: string;
+  status: "active" | "archived" | "converted";
 }
 
 export type DopamineCost = "tiny" | "micro" | "snack" | "meal" | "recovery";
@@ -77,6 +78,7 @@ export interface AppState {
   lastBookendDate: string;
   activeDays: string[];
   onboardingCompleted: boolean;
+  hasCompletedRoomSetup: boolean;
   firstUseDate: string;
   dailyReflections: DailyReflection[];
 }

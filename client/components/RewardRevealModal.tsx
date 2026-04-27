@@ -17,7 +17,10 @@ export const REWARD_DURATION_LABEL: Record<DopamineCost, string> = {
   recovery: "recovery",
 };
 
-export const REWARD_DURATION_COLOR: Record<DopamineCost, { fg: string; bg: string }> = {
+export const REWARD_DURATION_COLOR: Record<
+  DopamineCost,
+  { fg: string; bg: string }
+> = {
   tiny: { fg: "#7BB3C9", bg: "#E3F0F5" },
   micro: { fg: "#7B9EA8", bg: "#E3ECF0" },
   snack: { fg: "#A98BC9", bg: "#EDE3F5" },
@@ -25,7 +28,13 @@ export const REWARD_DURATION_COLOR: Record<DopamineCost, { fg: string; bg: strin
   recovery: { fg: "#A8BAA8", bg: "#E8F0E8" },
 };
 
-const DURATION_ORDER: DopamineCost[] = ["tiny", "micro", "snack", "meal", "recovery"];
+const DURATION_ORDER: DopamineCost[] = [
+  "tiny",
+  "micro",
+  "snack",
+  "meal",
+  "recovery",
+];
 
 interface RewardRevealModalProps {
   visible: boolean;
@@ -39,6 +48,7 @@ interface RewardRevealModalProps {
    * Lead headline. Defaults to "You earned a [X]-minute reward."
    */
   headline?: string;
+  onRestoreDefaults?: () => void;
 }
 
 type Stage = "choose" | "spinning" | "revealed" | "saved";
@@ -52,6 +62,7 @@ export function RewardRevealModal({
   onClose,
   earnedTier,
   headline,
+  onRestoreDefaults,
 }: RewardRevealModalProps) {
   const { theme } = useTheme();
   const reduceMotion = useAppStore((s) => s.reduceMotion);
@@ -104,8 +115,7 @@ export function RewardRevealModal({
       setHighlightId(next.id);
       triggerHaptic("light");
       const progress = count / maxSteps;
-      const delay =
-        progress < 0.6 ? 90 : progress < 0.85 ? 160 : 260;
+      const delay = progress < 0.6 ? 90 : progress < 0.85 ? 160 : 260;
       count += 1;
       setTimeout(tick, delay);
     };
@@ -124,6 +134,11 @@ export function RewardRevealModal({
     setStage("saved");
   }, []);
 
+  const handleRestoreDefaults = useCallback(() => {
+    triggerHaptic("success");
+    onRestoreDefaults?.();
+  }, [onRestoreDefaults]);
+
   const handleSwap = useCallback(() => {
     if (eligible.length <= 1) return;
     triggerHaptic("selection");
@@ -138,12 +153,24 @@ export function RewardRevealModal({
       : "You earned a reward.");
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <View style={styles.overlay}>
-        <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+        <View
+          style={[styles.card, { backgroundColor: theme.backgroundDefault }]}
+        >
           {stage === "choose" ? (
             <>
-              <View style={[styles.iconBubble, { backgroundColor: theme.primary + "20" }]}>
+              <View
+                style={[
+                  styles.iconBubble,
+                  { backgroundColor: theme.primary + "20" },
+                ]}
+              >
                 <Feather name="gift" size={32} color={theme.primary} />
               </View>
               <ThemedText type="h2" style={styles.headline}>
@@ -154,9 +181,38 @@ export function RewardRevealModal({
               </ThemedText>
 
               {eligible.length === 0 ? (
-                <ThemedText style={[styles.empty, { color: theme.textSecondary }]}>
-                  Add some treats to your dopamine menu to claim a reward next time.
-                </ThemedText>
+                <>
+                  <ThemedText
+                    style={[styles.empty, { color: theme.textSecondary }]}
+                  >
+                    Need ideas? Restore starter rewards and claim one now.
+                  </ThemedText>
+                  {onRestoreDefaults ? (
+                    <Pressable
+                      onPress={handleRestoreDefaults}
+                      accessibilityRole="button"
+                      accessibilityLabel="Add starter rewards"
+                      style={[
+                        styles.secondaryAction,
+                        { borderColor: theme.border },
+                      ]}
+                    >
+                      <Feather
+                        name="plus-circle"
+                        size={16}
+                        color={theme.text}
+                      />
+                      <ThemedText
+                        style={[
+                          styles.secondaryActionText,
+                          { color: theme.text },
+                        ]}
+                      >
+                        Add starter rewards
+                      </ThemedText>
+                    </Pressable>
+                  ) : null}
+                </>
               ) : null}
 
               <View style={styles.actions}>
@@ -164,26 +220,34 @@ export function RewardRevealModal({
                   onPress={handleSpin}
                   disabled={eligible.length === 0}
                   accessibilityRole="button"
-                  accessibilityLabel={reduceMotion ? "Reveal reward" : "Spin for reward"}
+                  accessibilityLabel={
+                    reduceMotion ? "Reveal reward" : "Spin for reward"
+                  }
                   style={[
                     styles.primaryAction,
                     {
                       backgroundColor:
-                        eligible.length === 0 ? theme.backgroundSecondary : theme.primary,
+                        eligible.length === 0
+                          ? theme.backgroundSecondary
+                          : theme.primary,
                     },
                   ]}
                 >
                   <Feather
                     name={reduceMotion ? "eye" : "refresh-cw"}
                     size={18}
-                    color={eligible.length === 0 ? theme.textSecondary : "#FFFFFF"}
+                    color={
+                      eligible.length === 0 ? theme.textSecondary : "#FFFFFF"
+                    }
                   />
                   <ThemedText
                     style={[
                       styles.primaryActionText,
                       {
                         color:
-                          eligible.length === 0 ? theme.textSecondary : "#FFFFFF",
+                          eligible.length === 0
+                            ? theme.textSecondary
+                            : "#FFFFFF",
                       },
                     ]}
                   >
@@ -195,15 +259,17 @@ export function RewardRevealModal({
                   onPress={handlePick}
                   disabled={eligible.length === 0}
                   accessibilityRole="button"
-                  accessibilityLabel="Pick a random reward without spinning"
+                  accessibilityLabel="Pick a reward instead of spinning"
                   style={[
                     styles.secondaryAction,
                     { borderColor: theme.border },
                   ]}
                 >
                   <Feather name="shuffle" size={16} color={theme.text} />
-                  <ThemedText style={[styles.secondaryActionText, { color: theme.text }]}>
-                    Pick for me
+                  <ThemedText
+                    style={[styles.secondaryActionText, { color: theme.text }]}
+                  >
+                    Pick instead
                   </ThemedText>
                 </Pressable>
 
@@ -217,7 +283,9 @@ export function RewardRevealModal({
                   ]}
                 >
                   <Feather name="bookmark" size={16} color={theme.text} />
-                  <ThemedText style={[styles.secondaryActionText, { color: theme.text }]}>
+                  <ThemedText
+                    style={[styles.secondaryActionText, { color: theme.text }]}
+                  >
                     Save for later
                   </ThemedText>
                 </Pressable>
@@ -228,7 +296,9 @@ export function RewardRevealModal({
                 accessibilityRole="button"
                 style={styles.dismiss}
               >
-                <ThemedText style={[styles.dismissText, { color: theme.textSecondary }]}>
+                <ThemedText
+                  style={[styles.dismissText, { color: theme.textSecondary }]}
+                >
                   Skip this one
                 </ThemedText>
               </Pressable>
@@ -237,7 +307,12 @@ export function RewardRevealModal({
 
           {stage === "spinning" ? (
             <>
-              <View style={[styles.iconBubble, { backgroundColor: theme.primary + "20" }]}>
+              <View
+                style={[
+                  styles.iconBubble,
+                  { backgroundColor: theme.primary + "20" },
+                ]}
+              >
                 <Feather name="refresh-cw" size={32} color={theme.primary} />
               </View>
               <ThemedText type="h3" style={styles.headline}>
@@ -253,7 +328,9 @@ export function RewardRevealModal({
                       style={[
                         styles.spinItem,
                         {
-                          backgroundColor: lit ? colors.bg : theme.backgroundSecondary,
+                          backgroundColor: lit
+                            ? colors.bg
+                            : theme.backgroundSecondary,
                           borderColor: lit ? colors.fg : "transparent",
                           opacity: lit ? 1 : 0.5,
                         },
@@ -283,7 +360,9 @@ export function RewardRevealModal({
                   color={REWARD_DURATION_COLOR[winner.cost].fg}
                 />
               </View>
-              <ThemedText style={[styles.kicker, { color: theme.textSecondary }]}>
+              <ThemedText
+                style={[styles.kicker, { color: theme.textSecondary }]}
+              >
                 Your reward
               </ThemedText>
               <ThemedText type="h2" style={styles.winnerTitle}>
@@ -301,27 +380,40 @@ export function RewardRevealModal({
                 </ThemedText>
               </View>
               <ThemedText style={[styles.body, { color: theme.textSecondary }]}>
-                You're allowed to enjoy this.
+                You&apos;re allowed to enjoy this.
               </ThemedText>
 
               <View style={styles.actions}>
                 <Pressable
                   onPress={onClose}
                   accessibilityRole="button"
-                  style={[styles.primaryAction, { backgroundColor: theme.primary }]}
+                  style={[
+                    styles.primaryAction,
+                    { backgroundColor: theme.primary },
+                  ]}
                 >
                   <Feather name="check" size={18} color="#FFFFFF" />
-                  <ThemedText style={styles.primaryActionText}>Take it now</ThemedText>
+                  <ThemedText style={styles.primaryActionText}>
+                    Take it now
+                  </ThemedText>
                 </Pressable>
 
                 {eligible.length > 1 ? (
                   <Pressable
                     onPress={handleSwap}
                     accessibilityRole="button"
-                    style={[styles.secondaryAction, { borderColor: theme.border }]}
+                    style={[
+                      styles.secondaryAction,
+                      { borderColor: theme.border },
+                    ]}
                   >
                     <Feather name="repeat" size={16} color={theme.text} />
-                    <ThemedText style={[styles.secondaryActionText, { color: theme.text }]}>
+                    <ThemedText
+                      style={[
+                        styles.secondaryActionText,
+                        { color: theme.text },
+                      ]}
+                    >
                       Swap reward
                     </ThemedText>
                   </Pressable>
@@ -330,10 +422,15 @@ export function RewardRevealModal({
                 <Pressable
                   onPress={handleSave}
                   accessibilityRole="button"
-                  style={[styles.secondaryAction, { borderColor: theme.border }]}
+                  style={[
+                    styles.secondaryAction,
+                    { borderColor: theme.border },
+                  ]}
                 >
                   <Feather name="bookmark" size={16} color={theme.text} />
-                  <ThemedText style={[styles.secondaryActionText, { color: theme.text }]}>
+                  <ThemedText
+                    style={[styles.secondaryActionText, { color: theme.text }]}
+                  >
                     Save for later
                   </ThemedText>
                 </Pressable>
@@ -343,7 +440,12 @@ export function RewardRevealModal({
 
           {stage === "saved" ? (
             <>
-              <View style={[styles.iconBubble, { backgroundColor: theme.success + "20" }]}>
+              <View
+                style={[
+                  styles.iconBubble,
+                  { backgroundColor: theme.success + "20" },
+                ]}
+              >
                 <Feather name="bookmark" size={32} color={theme.success} />
               </View>
               <ThemedText type="h2" style={styles.headline}>
@@ -355,7 +457,10 @@ export function RewardRevealModal({
               <Pressable
                 onPress={onClose}
                 accessibilityRole="button"
-                style={[styles.primaryAction, { backgroundColor: theme.primary }]}
+                style={[
+                  styles.primaryAction,
+                  { backgroundColor: theme.primary },
+                ]}
               >
                 <ThemedText style={styles.primaryActionText}>Close</ThemedText>
               </Pressable>

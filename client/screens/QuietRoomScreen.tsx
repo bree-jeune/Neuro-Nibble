@@ -121,7 +121,10 @@ export default function QuietRoomScreen() {
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
       contentContainerStyle={[
         styles.contentContainer,
-        { paddingTop: headerHeight + insets.top + Spacing.md },
+        {
+          paddingTop: headerHeight + Spacing.sm,
+          paddingBottom: Math.max(Spacing.lg, insets.bottom + Spacing.md),
+        },
       ]}
       showsVerticalScrollIndicator={false}
     >

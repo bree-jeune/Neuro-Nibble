@@ -136,8 +136,7 @@ export function QuietRoomPreviewCard({ onPress }: QuietRoomPreviewCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    marginTop: Spacing.lg,
-    minHeight: 92,
+    minHeight: 84,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm + 2,
     borderRadius: BorderRadius.sm,

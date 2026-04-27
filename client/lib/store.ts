@@ -1,7 +1,19 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { AppState, Task, EnergyLevel, WeeklyRoom, Step, DailyReflection, ThoughtItem, DopamineItem, DopamineCost, ColorSchemePreference, QuietRoomMode } from "@/lib/types";
+import { DEFAULT_DOPAMINE_REWARDS } from "@/constants/defaultDopamineRewards";
+import type {
+  AppState,
+  Task,
+  EnergyLevel,
+  WeeklyRoom,
+  Step,
+  ThoughtItem,
+  DopamineItem,
+  DopamineCost,
+  ColorSchemePreference,
+  QuietRoomMode,
+} from "@/lib/types";
 
 interface AppStore extends AppState {
   setEnergyLevel: (level: EnergyLevel) => void;
@@ -13,14 +25,28 @@ interface AppStore extends AppState {
   deleteTask: (id: string) => void;
   archiveTask: (id: string) => void;
   toggleStepComplete: (taskId: string, stepId: string) => void;
-  restoreStep: (taskId: string, step: Step, removeDayFromActive: string | null) => void;
+  restoreStep: (
+    taskId: string,
+    step: Step,
+    removeDayFromActive: string | null,
+  ) => void;
   setBrainDump: (text: string) => void;
-  addThought: (text: string) => void;
+  addThought: (text: string) => ThoughtItem;
   removeThought: (id: string) => void;
-  convertThoughtToTask: (thought: ThoughtItem) => void;
+  archiveThought: (id: string) => void;
+  convertThoughtToTask: (thought: ThoughtItem) => string;
+  convertThoughtToBites: (
+    thought: ThoughtItem,
+    steps: Step[],
+    energyLevel: EnergyLevel,
+  ) => string;
   addDopamineItem: (text: string, cost: DopamineCost) => void;
-  updateDopamineItem: (id: string, updates: Partial<Omit<DopamineItem, "id">>) => void;
+  updateDopamineItem: (
+    id: string,
+    updates: Partial<Omit<DopamineItem, "id">>,
+  ) => void;
   removeDopamineItem: (id: string) => void;
+  restoreDefaultDopamineRewards: () => void;
   setOneTinyThing: (text: string) => void;
   setDisplayName: (name: string) => void;
   setAvatarIndex: (index: number) => void;
@@ -33,6 +59,7 @@ interface AppStore extends AppState {
   restoreBookendState: (completed: boolean, lastDate: string) => void;
   markActiveDay: () => void;
   completeOnboarding: () => void;
+  completeRoomSetup: () => void;
   addDailyReflection: (text: string) => void;
   resetAllData: () => void;
 }
@@ -44,7 +71,7 @@ const initialState: AppState = {
   tasks: [],
   brainDump: "",
   thoughtDump: [],
-  dopamineMenu: [],
+  dopamineMenu: DEFAULT_DOPAMINE_REWARDS,
   oneTinyThing: "",
   displayName: "",
   avatarIndex: 0,
@@ -57,6 +84,7 @@ const initialState: AppState = {
   lastBookendDate: "",
   activeDays: [],
   onboardingCompleted: false,
+  hasCompletedRoomSetup: false,
   firstUseDate: "",
   dailyReflections: [],
 };
@@ -71,7 +99,7 @@ export const useAppStore = create<AppStore>()(
       setColorScheme: (scheme) => set({ colorScheme: scheme }),
 
       setWeeklyRoom: (room) => set({ weeklyRoom: room }),
-      
+
       addTask: (task) => {
         const id = task.id ?? Date.now().toString();
         const newTask: Task = {
@@ -82,40 +110,41 @@ export const useAppStore = create<AppStore>()(
         set((state) => ({ tasks: [newTask, ...state.tasks] }));
         return id;
       },
-      
+
       restoreTask: (task, index) => {
         set((state) => {
           const newTasks = [...state.tasks];
-          const insertIndex = index !== undefined ? Math.min(index, newTasks.length) : 0;
+          const insertIndex =
+            index !== undefined ? Math.min(index, newTasks.length) : 0;
           newTasks.splice(insertIndex, 0, task);
           return { tasks: newTasks };
         });
       },
-      
+
       updateTask: (id, updates) => {
         set((state) => ({
           tasks: state.tasks.map((t) =>
-            t.id === id ? { ...t, ...updates } : t
+            t.id === id ? { ...t, ...updates } : t,
           ),
         }));
       },
-      
+
       deleteTask: (id) => {
         set((state) => ({
           tasks: state.tasks.filter((t) => t.id !== id),
         }));
       },
-      
+
       archiveTask: (id) => {
         set((state) => ({
           tasks: state.tasks.map((t) =>
             t.id === id
               ? { ...t, isArchived: true, archivedAt: new Date().toISOString() }
-              : t
+              : t,
           ),
         }));
       },
-      
+
       toggleStepComplete: (taskId, stepId) => {
         const today = new Date().toISOString().split("T")[0];
         set((state) => {
@@ -147,43 +176,50 @@ export const useAppStore = create<AppStore>()(
                         ? {
                             ...s,
                             completed: !s.completed,
-                            completedAt: !s.completed ? new Date().toISOString() : undefined,
+                            completedAt: !s.completed
+                              ? new Date().toISOString()
+                              : undefined,
                           }
-                        : s
+                        : s,
                     ),
                   }
-                : t
+                : t,
             ),
           };
         });
       },
-      
+
       restoreStep: (taskId, step, removeDayFromActive) => {
         set((state) => {
           let newActiveDays = state.activeDays;
           if (removeDayFromActive) {
             const hasOtherCompletedStepsToday = state.tasks.some((t) =>
-              t.steps.some((s) => 
-                s.id !== step.id && 
-                s.completed && 
-                s.completedAt?.startsWith(removeDayFromActive)
-              )
+              t.steps.some(
+                (s) =>
+                  s.id !== step.id &&
+                  s.completed &&
+                  s.completedAt?.startsWith(removeDayFromActive),
+              ),
             );
             if (!hasOtherCompletedStepsToday) {
-              newActiveDays = state.activeDays.filter((d) => d !== removeDayFromActive);
+              newActiveDays = state.activeDays.filter(
+                (d) => d !== removeDayFromActive,
+              );
             }
           }
-          
+
           return {
             activeDays: newActiveDays,
             tasks: state.tasks.map((t) => {
               if (t.id !== taskId) return t;
-              
+
               const newSteps = t.steps.map((s) =>
-                s.id === step.id ? { ...step } : s
+                s.id === step.id ? { ...step } : s,
               );
-              
-              const completedSteps = newSteps.filter((s) => s.completed && s.completedAt);
+
+              const completedSteps = newSteps.filter(
+                (s) => s.completed && s.completedAt,
+              );
               let computedLastWorkedOn: string | undefined;
               if (completedSteps.length > 0) {
                 const mostRecent = completedSteps.reduce((latest, s) => {
@@ -193,7 +229,7 @@ export const useAppStore = create<AppStore>()(
                 });
                 computedLastWorkedOn = mostRecent.completedAt;
               }
-              
+
               return {
                 ...t,
                 lastWorkedOn: computedLastWorkedOn,
@@ -203,24 +239,34 @@ export const useAppStore = create<AppStore>()(
           };
         });
       },
-      
+
       setBrainDump: (text) => set({ brainDump: text }),
-      
+
       addThought: (text) => {
         const newThought: ThoughtItem = {
           id: Date.now().toString(),
           text,
           createdAt: new Date().toISOString(),
+          status: "active",
         };
         set((state) => ({ thoughtDump: [...state.thoughtDump, newThought] }));
+        return newThought;
       },
-      
+
       removeThought: (id) => {
         set((state) => ({
           thoughtDump: state.thoughtDump.filter((t) => t.id !== id),
         }));
       },
-      
+
+      archiveThought: (id) => {
+        set((state) => ({
+          thoughtDump: state.thoughtDump.map((thought) =>
+            thought.id === id ? { ...thought, status: "archived" } : thought,
+          ),
+        }));
+      },
+
       convertThoughtToTask: (thought) => {
         const newTask: Task = {
           id: Date.now().toString(),
@@ -231,10 +277,30 @@ export const useAppStore = create<AppStore>()(
         };
         set((state) => ({
           tasks: [newTask, ...state.tasks],
-          thoughtDump: state.thoughtDump.filter((t) => t.id !== thought.id),
+          thoughtDump: state.thoughtDump.map((item) =>
+            item.id === thought.id ? { ...item, status: "converted" } : item,
+          ),
         }));
+        return newTask.id;
       },
-      
+
+      convertThoughtToBites: (thought, steps, energyLevel) => {
+        const newTask: Task = {
+          id: Date.now().toString(),
+          title: thought.text,
+          steps,
+          energyLevel,
+          createdAt: new Date().toISOString(),
+        };
+        set((state) => ({
+          tasks: [newTask, ...state.tasks],
+          thoughtDump: state.thoughtDump.map((item) =>
+            item.id === thought.id ? { ...item, status: "converted" } : item,
+          ),
+        }));
+        return newTask.id;
+      },
+
       addDopamineItem: (text, cost) => {
         const newItem: DopamineItem = {
           id: Date.now().toString(),
@@ -245,37 +311,58 @@ export const useAppStore = create<AppStore>()(
           dopamineMenu: [...state.dopamineMenu, newItem],
         }));
       },
-      
+
       updateDopamineItem: (id, updates) => {
         set((state) => ({
           dopamineMenu: state.dopamineMenu.map((item) =>
-            item.id === id ? { ...item, ...updates } : item
+            item.id === id ? { ...item, ...updates } : item,
           ),
         }));
       },
-      
+
       removeDopamineItem: (id) => {
         set((state) => ({
           dopamineMenu: state.dopamineMenu.filter((item) => item.id !== id),
         }));
       },
-      
+
+      restoreDefaultDopamineRewards: () => {
+        set((state) => {
+          const existingIds = new Set(
+            state.dopamineMenu.map((item) => item.id),
+          );
+          const missingDefaults = DEFAULT_DOPAMINE_REWARDS.filter(
+            (item) => !existingIds.has(item.id),
+          );
+
+          if (missingDefaults.length === 0) {
+            return {};
+          }
+
+          return {
+            dopamineMenu: [...state.dopamineMenu, ...missingDefaults],
+          };
+        });
+      },
+
       setOneTinyThing: (text) => set({ oneTinyThing: text }),
-      
+
       setDisplayName: (name) => set({ displayName: name }),
-      
+
       setAvatarIndex: (index) => set({ avatarIndex: index }),
-      
+
       setHapticsEnabled: (enabled) => set({ hapticsEnabled: enabled }),
 
       setReduceMotion: (enabled) => set({ reduceMotion: enabled }),
 
       setQuietRoomMode: (mode) => set({ quietRoomMode: mode }),
-      
-      setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
-      
-      setEnergyCheckInEnabled: (enabled) => set({ energyCheckInEnabled: enabled }),
-      
+
+      setNotificationsEnabled: (enabled) =>
+        set({ notificationsEnabled: enabled }),
+
+      setEnergyCheckInEnabled: (enabled) =>
+        set({ energyCheckInEnabled: enabled }),
+
       markActiveDay: () => {
         const today = new Date().toISOString().split("T")[0];
         set((state) => {
@@ -293,33 +380,40 @@ export const useAppStore = create<AppStore>()(
           return { activeDays: last30Days };
         });
       },
-      
+
       setBookendCompleted: (completed) => {
         const today = new Date().toISOString().split("T")[0];
         set({ bookendCompleted: completed, lastBookendDate: today });
       },
-      
+
       restoreBookendState: (completed, lastDate) => {
         set({ bookendCompleted: completed, lastBookendDate: lastDate });
       },
-      
+
       completeOnboarding: () => set({ onboardingCompleted: true }),
-      
+
+      completeRoomSetup: () => set({ hasCompletedRoomSetup: true }),
+
       addDailyReflection: (text) => {
         const today = new Date().toISOString().split("T")[0];
         set((state) => {
-          const existingIndex = state.dailyReflections.findIndex((r) => r.date === today);
+          const existingIndex = state.dailyReflections.findIndex(
+            (r) => r.date === today,
+          );
           if (existingIndex >= 0) {
             const updated = [...state.dailyReflections];
             updated[existingIndex] = { date: today, text };
             return { dailyReflections: updated };
           }
-          return { 
-            dailyReflections: [...state.dailyReflections.slice(-30), { date: today, text }] 
+          return {
+            dailyReflections: [
+              ...state.dailyReflections.slice(-30),
+              { date: today, text },
+            ],
           };
         });
       },
-      
+
       resetAllData: () => set(initialState),
     }),
     {
@@ -331,13 +425,17 @@ export const useAppStore = create<AppStore>()(
           if (state.lastBookendDate !== today) {
             state.bookendCompleted = false;
           }
-          
+
           if (!state.firstUseDate) {
             state.firstUseDate = new Date().toISOString();
           }
 
           if (!state.colorScheme) {
             state.colorScheme = "light";
+          }
+
+          if (typeof state.hasCompletedRoomSetup !== "boolean") {
+            state.hasCompletedRoomSetup = false;
           }
 
           if (typeof state.reduceMotion !== "boolean") {
@@ -347,21 +445,33 @@ export const useAppStore = create<AppStore>()(
           if (!state.quietRoomMode) {
             state.quietRoomMode = "silent";
           }
-          
+
+          if (!state.dopamineMenu || state.dopamineMenu.length === 0) {
+            state.dopamineMenu = DEFAULT_DOPAMINE_REWARDS;
+          }
+
           state.tasks = state.tasks.map((task) => ({
             ...task,
             steps: task.steps.map((step) => {
               if (step.completed && !step.completedAt) {
                 return {
                   ...step,
-                  completedAt: task.lastWorkedOn || task.createdAt || new Date().toISOString(),
+                  completedAt:
+                    task.lastWorkedOn ||
+                    task.createdAt ||
+                    new Date().toISOString(),
                 };
               }
               return step;
             }),
           }));
+
+          state.thoughtDump = state.thoughtDump.map((thought) => ({
+            ...thought,
+            status: thought.status ?? "active",
+          }));
         }
       },
-    }
-  )
+    },
+  ),
 );

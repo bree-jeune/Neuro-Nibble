@@ -1,5 +1,13 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { View, StyleSheet, TextInput, Pressable, FlatList, Modal, ScrollView } from "react-native";
+import {
+  View,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  FlatList,
+  Modal,
+  ScrollView,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight, HeaderButton } from "@react-navigation/elements";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -16,15 +24,26 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { DynamicFooter } from "@/components/DynamicFooter";
 import { PresenceStrip } from "@/components/PresenceStrip";
-import { RewardRevealModal, durationFromMinutes } from "@/components/RewardRevealModal";
+import {
+  RewardRevealModal,
+  REWARD_DURATION_LABEL,
+  durationFromMinutes,
+} from "@/components/RewardRevealModal";
 import { useAppStore } from "@/lib/store";
 import { useSnackbarStore } from "@/lib/snackbarStore";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
-import type { EnergyLevel, Step } from "@/lib/types";
+import type { DopamineCost, EnergyLevel, Step, WeeklyRoom } from "@/lib/types";
 
 type ViewMode = "minimal" | "edit" | "work";
 
-type CategoryKey = "work" | "home" | "health" | "money" | "people" | "creative" | "other";
+type CategoryKey =
+  | "work"
+  | "home"
+  | "health"
+  | "money"
+  | "people"
+  | "creative"
+  | "other";
 
 interface CategoryConfig {
   key: CategoryKey;
@@ -42,7 +61,10 @@ const CATEGORIES: CategoryConfig[] = [
   { key: "other", label: "Other", icon: "more-horizontal" },
 ];
 
-const SUGGESTIONS_BY_CATEGORY: Record<Exclude<CategoryKey, "other">, string[]> = {
+const SUGGESTIONS_BY_CATEGORY: Record<
+  Exclude<CategoryKey, "other">,
+  string[]
+> = {
   work: [
     "Reply to an email",
     "Prepare for a meeting",
@@ -87,7 +109,10 @@ const SUGGESTIONS_BY_CATEGORY: Record<Exclude<CategoryKey, "other">, string[]> =
   ],
 };
 
-const generateBitesForEnergy = (taskTitle: string, energy: EnergyLevel): Step[] => {
+const generateBitesForEnergy = (
+  taskTitle: string,
+  energy: EnergyLevel,
+): Step[] => {
   // Energy → max minutes per bite + count range
   const profile =
     energy === "low"
@@ -173,6 +198,32 @@ const generateBitesForEnergy = (taskTitle: string, energy: EnergyLevel): Step[] 
   }));
 };
 
+const REWARD_PROMPT_COPY: Record<
+  WeeklyRoom,
+  { title: string; subtitle: string; rewardHeadline: string }
+> = {
+  chaos: {
+    title: "That helped.",
+    subtitle: "Small effort still earns care.",
+    rewardHeadline: "You earned a reward for getting one bite done.",
+  },
+  gentle: {
+    title: "That counts.",
+    subtitle: "You don't have to finish everything to get a boost.",
+    rewardHeadline: "You earned a gentle reward.",
+  },
+  build: {
+    title: "Progress banked.",
+    subtitle: "Reward the effort, not the whole day.",
+    rewardHeadline: "Bank the momentum with a reward.",
+  },
+  repair: {
+    title: "You re-entered.",
+    subtitle: "Maintenance isn't failure. This effort counts.",
+    rewardHeadline: "You earned a gentle dopamine reward.",
+  },
+};
+
 const getTemplateSteps = (taskTitle: string): Step[] => {
   const templates: Record<string, { text: string; minutes: number }[]> = {
     "Reply to emails": [
@@ -216,7 +267,7 @@ const getTemplateSteps = (taskTitle: string): Step[] => {
       { text: "Save and celebrate", minutes: 2 },
     ],
   };
-  
+
   const stepsData = templates[taskTitle] || [];
   return stepsData.map((s, i) => ({
     id: (Date.now() + i).toString(),
@@ -230,26 +281,43 @@ export default function BreakItDownScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { theme } = useTheme();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "BreakItDown">>();
 
-  const { tasks, addTask, updateTask, toggleStepComplete, restoreStep, archiveTask, dopamineMenu } = useAppStore();
+  const {
+    tasks,
+    addTask,
+    updateTask,
+    toggleStepComplete,
+    restoreStep,
+    archiveTask,
+    dopamineMenu,
+    weeklyRoom,
+    restoreDefaultDopamineRewards,
+  } = useAppStore();
   const showSnackbar = useSnackbarStore((s) => s.show);
-  
+
   const initialTaskId = route.params?.taskId ?? null;
   const initialTask = initialTaskId
-    ? tasks.find(t => t.id === initialTaskId)
+    ? tasks.find((t) => t.id === initialTaskId)
     : undefined;
 
-  const [activeTaskId, setActiveTaskId] = useState<string | null>(initialTaskId);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(
+    initialTaskId,
+  );
   const existingTask = activeTaskId
-    ? tasks.find(t => t.id === activeTaskId)
+    ? tasks.find((t) => t.id === activeTaskId)
     : undefined;
 
-  const [viewMode, setViewMode] = useState<ViewMode>(initialTask ? "work" : "minimal");
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    initialTask ? "work" : "minimal",
+  );
   const [title, setTitle] = useState(initialTask?.title || "");
   const [steps, setSteps] = useState<Step[]>(initialTask?.steps || []);
-  const [energyLevel, setEnergyLevel] = useState<EnergyLevel>(initialTask?.energyLevel || "medium");
+  const [energyLevel, setEnergyLevel] = useState<EnergyLevel>(
+    initialTask?.energyLevel || "medium",
+  );
   const [firstStepText, setFirstStepText] = useState("");
   const [newStepText, setNewStepText] = useState("");
   const [newStepMinutes, setNewStepMinutes] = useState(5);
@@ -257,19 +325,23 @@ export default function BreakItDownScreen() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
-  const [rewardTier, setRewardTier] = useState<import("@/lib/types").DopamineCost | null>(null);
+  const [rewardTier, setRewardTier] = useState<DopamineCost | null>(null);
   const [pendingArchivePrompt, setPendingArchivePrompt] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [pendingNavigateBack, setPendingNavigateBack] = useState(false);
+  const [pendingCompletionAfterReward, setPendingCompletionAfterReward] =
+    useState(false);
   const [showBiteInspiration, setShowBiteInspiration] = useState(false);
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
-  const [wizardCategory, setWizardCategory] = useState<CategoryKey | null>(null);
+  const [wizardCategory, setWizardCategory] = useState<CategoryKey | null>(
+    null,
+  );
   const [wizardTaskText, setWizardTaskText] = useState("");
   const [useMinimalFallback, setUseMinimalFallback] = useState(false);
 
   const quickChips = [
     "Email",
-    "Laundry", 
+    "Laundry",
     "Dishes",
     "Shower",
     "Cleaning",
@@ -279,18 +351,20 @@ export default function BreakItDownScreen() {
   ];
 
   const canSave = title.trim().length > 0;
-  const canStartMinimal = title.trim().length > 0 && firstStepText.trim().length > 0;
+  const canStartMinimal =
+    title.trim().length > 0 && firstStepText.trim().length > 0;
   const totalMinutes = steps.reduce((acc, s) => acc + s.minutes, 0);
-  const completedSteps = steps.filter(s => s.completed).length;
-  const nextIncompleteStep = steps.find(s => !s.completed);
+  const completedSteps = steps.filter((s) => s.completed).length;
+  const nextIncompleteStep = steps.find((s) => !s.completed);
 
   useEffect(() => {
-    const headerTitle = viewMode === "minimal" 
-      ? "Break It Down" 
-      : viewMode === "edit" 
-        ? "Edit Bites" 
-        : title || "Your Bites";
-    
+    const headerTitle =
+      viewMode === "minimal"
+        ? "Break It Down"
+        : viewMode === "edit"
+          ? "Edit Bites"
+          : title || "Your Bites";
+
     navigation.setOptions({
       headerTitle,
       headerLeft: () => (
@@ -300,26 +374,32 @@ export default function BreakItDownScreen() {
           </ThemedText>
         </HeaderButton>
       ),
-      headerRight: viewMode === "edit" ? () => (
-        <HeaderButton
-          onPress={handleSave}
-          disabled={!canSave}
-        >
-          <ThemedText style={{ color: canSave ? theme.primary : theme.textSecondary }}>
-            Save
-          </ThemedText>
-        </HeaderButton>
-      ) : viewMode === "work" ? () => (
-        <HeaderButton onPress={() => setViewMode("edit")}>
-          <Feather name="edit-2" size={20} color={theme.primary} />
-        </HeaderButton>
-      ) : undefined,
+      headerRight:
+        viewMode === "edit"
+          ? () => (
+              <HeaderButton onPress={handleSave} disabled={!canSave}>
+                <ThemedText
+                  style={{
+                    color: canSave ? theme.primary : theme.textSecondary,
+                  }}
+                >
+                  Save
+                </ThemedText>
+              </HeaderButton>
+            )
+          : viewMode === "work"
+            ? () => (
+                <HeaderButton onPress={() => setViewMode("edit")}>
+                  <Feather name="edit-2" size={20} color={theme.primary} />
+                </HeaderButton>
+              )
+            : undefined,
     });
   }, [navigation, theme, canSave, title, steps, energyLevel, viewMode]);
 
   const handleStartMinimal = useCallback(() => {
     if (!canStartMinimal) return;
-    
+
     triggerHaptic("success");
 
     const newStep: Step = {
@@ -359,33 +439,36 @@ export default function BreakItDownScreen() {
     setWizardStep(3);
   }, [wizardTaskText]);
 
-  const handleWizardEnergySelect = useCallback((level: EnergyLevel) => {
-    const taskTitle = wizardTaskText.trim();
-    if (!taskTitle) return;
-    triggerHaptic("success");
+  const handleWizardEnergySelect = useCallback(
+    (level: EnergyLevel) => {
+      const taskTitle = wizardTaskText.trim();
+      if (!taskTitle) return;
+      triggerHaptic("success");
 
-    const newSteps = generateBitesForEnergy(taskTitle, level);
-    setSteps(newSteps);
-    setEnergyLevel(level);
-    setTitle(taskTitle);
+      const newSteps = generateBitesForEnergy(taskTitle, level);
+      setSteps(newSteps);
+      setEnergyLevel(level);
+      setTitle(taskTitle);
 
-    const newTaskId = `task_${Date.now()}`;
-    addTask({
-      id: newTaskId,
-      title: taskTitle,
-      steps: newSteps,
-      energyLevel: level,
-    });
-    setActiveTaskId(newTaskId);
+      const newTaskId = `task_${Date.now()}`;
+      addTask({
+        id: newTaskId,
+        title: taskTitle,
+        steps: newSteps,
+        energyLevel: level,
+      });
+      setActiveTaskId(newTaskId);
 
-    setViewMode("work");
-  }, [wizardTaskText, addTask]);
+      setViewMode("work");
+    },
+    [wizardTaskText, addTask],
+  );
 
   const handleSave = useCallback(() => {
     if (!canSave) return;
-    
+
     triggerHaptic("success");
-    
+
     if (existingTask) {
       updateTask(existingTask.id, {
         title: title.trim(),
@@ -416,130 +499,175 @@ export default function BreakItDownScreen() {
         minutes: newStepMinutes,
         completed: false,
       };
-      setSteps(prev => [...prev, newStep]);
+      setSteps((prev) => [...prev, newStep]);
       setNewStepText("");
       setNewStepMinutes(5);
     }
   }, [newStepText, newStepMinutes]);
 
-  const handleRemoveStep = useCallback((stepId: string) => {
-    triggerHaptic("light");
-    const removedStep = steps.find(s => s.id === stepId);
-    const removedIndex = steps.findIndex(s => s.id === stepId);
-    
-    if (!removedStep) return;
-    
-    const stepSnapshot: Step = { ...removedStep };
-    const indexSnapshot = removedIndex;
-    
-    setSteps(prev => prev.filter(s => s.id !== stepId));
-    
-    showSnackbar("Bite removed", () => {
-      setSteps(prev => {
+  const handleRemoveStep = useCallback(
+    (stepId: string) => {
+      triggerHaptic("light");
+      const removedStep = steps.find((s) => s.id === stepId);
+      const removedIndex = steps.findIndex((s) => s.id === stepId);
+
+      if (!removedStep) return;
+
+      const stepSnapshot: Step = { ...removedStep };
+      const indexSnapshot = removedIndex;
+
+      setSteps((prev) => prev.filter((s) => s.id !== stepId));
+
+      showSnackbar("Bite removed", () => {
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          newSteps.splice(indexSnapshot, 0, stepSnapshot);
+          return newSteps;
+        });
+      });
+    },
+    [steps, showSnackbar],
+  );
+
+  const handleEditStep = useCallback(
+    (stepId: string, text: string, minutes: number) => {
+      triggerHaptic("light");
+      setSteps((prev) =>
+        prev.map((s) => (s.id === stepId ? { ...s, text, minutes } : s)),
+      );
+    },
+    [],
+  );
+
+  const handleMoveStep = useCallback(
+    (stepId: string, direction: "up" | "down") => {
+      triggerHaptic("light");
+      setSteps((prev) => {
+        const index = prev.findIndex((s) => s.id === stepId);
+        if (index === -1) return prev;
+        if (direction === "up" && index === 0) return prev;
+        if (direction === "down" && index === prev.length - 1) return prev;
+
         const newSteps = [...prev];
-        newSteps.splice(indexSnapshot, 0, stepSnapshot);
+        const swapIndex = direction === "up" ? index - 1 : index + 1;
+        [newSteps[index], newSteps[swapIndex]] = [
+          newSteps[swapIndex],
+          newSteps[index],
+        ];
         return newSteps;
       });
-    });
-  }, [steps, showSnackbar]);
-
-  const handleEditStep = useCallback((stepId: string, text: string, minutes: number) => {
-    triggerHaptic("light");
-    setSteps(prev => prev.map(s => 
-      s.id === stepId ? { ...s, text, minutes } : s
-    ));
-  }, []);
-
-  const handleMoveStep = useCallback((stepId: string, direction: "up" | "down") => {
-    triggerHaptic("light");
-    setSteps(prev => {
-      const index = prev.findIndex(s => s.id === stepId);
-      if (index === -1) return prev;
-      if (direction === "up" && index === 0) return prev;
-      if (direction === "down" && index === prev.length - 1) return prev;
-      
-      const newSteps = [...prev];
-      const swapIndex = direction === "up" ? index - 1 : index + 1;
-      [newSteps[index], newSteps[swapIndex]] = [newSteps[swapIndex], newSteps[index]];
-      return newSteps;
-    });
-  }, []);
+    },
+    [],
+  );
 
   const activeDays = useAppStore((s) => s.activeDays);
 
-  const handleToggleStep = useCallback((stepId: string, skipCelebration = false) => {
-    triggerHaptic("success");
-    const step = steps.find(s => s.id === stepId);
-    if (!step) return;
-    
-    const wasCompleted = step.completed;
-    const stepSnapshot: Step = JSON.parse(JSON.stringify(step));
-    const today = new Date().toISOString().split("T")[0];
-    
-    if (existingTask) {
-      toggleStepComplete(existingTask.id, stepId);
-    }
-    
-    const newSteps = steps.map(s => 
-      s.id === stepId ? { 
-        ...s, 
-        completed: !s.completed,
-        completedAt: !s.completed ? new Date().toISOString() : undefined,
-      } : s
-    );
-    setSteps(newSteps);
-    setActiveTimer(null);
-    
-    const isCompletingStep = !wasCompleted;
-    const allNowComplete = isCompletingStep && newSteps.every(s => s.completed);
-    
-    if (allNowComplete && existingTask && !existingTask.isArchived) {
-      setPendingArchivePrompt(true);
-      setShowCelebration(true);
-      return;
-    }
+  const handleToggleStep = useCallback(
+    (stepId: string, skipCelebration = false) => {
+      triggerHaptic("success");
+      const step = steps.find((s) => s.id === stepId);
+      if (!step) return;
 
-    if (!wasCompleted && !skipCelebration) {
-      setRewardTier(durationFromMinutes(step.minutes));
-      setShowCelebration(true);
-    }
-  }, [existingTask, toggleStepComplete, steps]);
+      const wasCompleted = step.completed;
+      const stepSnapshot: Step = JSON.parse(JSON.stringify(step));
+      const today = new Date().toISOString().split("T")[0];
 
-  const handleCelebrationChoice = useCallback((keepGoing: boolean) => {
-    setShowCelebration(false);
-    if (pendingArchivePrompt) {
-      setPendingArchivePrompt(false);
-      setShowCompletionModal(true);
-      return;
-    }
-    if (dopamineMenu.length > 0 && rewardTier) {
-      setPendingNavigateBack(!keepGoing);
-      setShowRewardModal(true);
-      return;
-    }
-    if (!keepGoing) {
-      navigation.goBack();
-    }
-  }, [navigation, pendingArchivePrompt, dopamineMenu.length, rewardTier]);
+      if (existingTask) {
+        toggleStepComplete(existingTask.id, stepId);
+      }
+
+      const newSteps = steps.map((s) =>
+        s.id === stepId
+          ? {
+              ...s,
+              completed: !s.completed,
+              completedAt: !s.completed ? new Date().toISOString() : undefined,
+            }
+          : s,
+      );
+      setSteps(newSteps);
+      setActiveTimer(null);
+
+      const isCompletingStep = !wasCompleted;
+      const allNowComplete =
+        isCompletingStep && newSteps.every((s) => s.completed);
+
+      if (allNowComplete && existingTask && !existingTask.isArchived) {
+        setRewardTier(durationFromMinutes(step.minutes));
+        setPendingArchivePrompt(true);
+        setShowCelebration(true);
+        return;
+      }
+
+      if (!wasCompleted && !skipCelebration) {
+        setRewardTier(durationFromMinutes(step.minutes));
+        setShowCelebration(true);
+      }
+    },
+    [existingTask, toggleStepComplete, steps],
+  );
+
+  const handleCelebrationChoice = useCallback(
+    (keepGoing: boolean) => {
+      setShowCelebration(false);
+      if (pendingArchivePrompt) {
+        setPendingArchivePrompt(false);
+        if (rewardTier) {
+          setPendingCompletionAfterReward(true);
+          setShowRewardModal(true);
+          return;
+        }
+        setShowCompletionModal(true);
+        return;
+      }
+      if (rewardTier) {
+        setPendingNavigateBack(!keepGoing);
+        setShowRewardModal(true);
+        return;
+      }
+      if (!keepGoing) {
+        navigation.goBack();
+      }
+    },
+    [navigation, pendingArchivePrompt, rewardTier],
+  );
 
   const handleRewardClose = useCallback(() => {
     setShowRewardModal(false);
     setRewardTier(null);
+    if (pendingCompletionAfterReward) {
+      setPendingCompletionAfterReward(false);
+      setShowCompletionModal(true);
+      return;
+    }
     if (pendingNavigateBack) {
       setPendingNavigateBack(false);
       navigation.goBack();
     }
-  }, [navigation, pendingNavigateBack]);
+  }, [navigation, pendingCompletionAfterReward, pendingNavigateBack]);
+
+  const rewardCopy = REWARD_PROMPT_COPY[weeklyRoom];
 
   if (viewMode === "work") {
-    const incompleteSteps = steps.filter(s => !s.completed);
-    
+    const incompleteSteps = steps.filter((s) => !s.completed);
+
     return (
-      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-        <View style={[styles.workHeader, { paddingTop: headerHeight + Spacing.md }]}>
-          <View style={[styles.permissionBanner, { backgroundColor: theme.primary + "15" }]}>
+      <View
+        style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
+      >
+        <View
+          style={[styles.workHeader, { paddingTop: headerHeight + Spacing.md }]}
+        >
+          <View
+            style={[
+              styles.permissionBanner,
+              { backgroundColor: theme.primary + "15" },
+            ]}
+          >
             <Feather name="heart" size={16} color={theme.primary} />
-            <ThemedText style={[styles.permissionBannerText, { color: theme.primary }]}>
+            <ThemedText
+              style={[styles.permissionBannerText, { color: theme.primary }]}
+            >
               You can stop after any bite. Progress is valid.
             </ThemedText>
           </View>
@@ -550,19 +678,27 @@ export default function BreakItDownScreen() {
 
           {completedSteps > 0 ? (
             <View style={styles.progressContainer}>
-              <View style={[styles.progressBar, { backgroundColor: theme.backgroundDefault }]}>
-                <View 
+              <View
+                style={[
+                  styles.progressBar,
+                  { backgroundColor: theme.backgroundDefault },
+                ]}
+              >
+                <View
                   style={[
-                    styles.progressFill, 
-                    { 
+                    styles.progressFill,
+                    {
                       backgroundColor: theme.primary,
                       width: `${(completedSteps / steps.length) * 100}%`,
-                    }
-                  ]} 
+                    },
+                  ]}
                 />
               </View>
-              <ThemedText style={[styles.progressText, { color: theme.textSecondary }]}>
-                {completedSteps} {completedSteps === 1 ? "bite" : "bites"} done today
+              <ThemedText
+                style={[styles.progressText, { color: theme.textSecondary }]}
+              >
+                {completedSteps} {completedSteps === 1 ? "bite" : "bites"} done
+                today
               </ThemedText>
             </View>
           ) : null}
@@ -570,13 +706,20 @@ export default function BreakItDownScreen() {
 
         {nextIncompleteStep ? (
           <View style={styles.currentStepContainer}>
-            <ThemedText style={[styles.currentStepLabel, { color: theme.textSecondary }]}>
+            <ThemedText
+              style={[styles.currentStepLabel, { color: theme.textSecondary }]}
+            >
               Current bite ({completedSteps + 1} of {steps.length})
             </ThemedText>
-            <View style={[styles.currentStepCard, { backgroundColor: theme.backgroundDefault }]}>
+            <View
+              style={[
+                styles.currentStepCard,
+                { backgroundColor: theme.backgroundDefault },
+              ]}
+            >
               <View style={styles.visualTimerContainer}>
-                <VisualTimer 
-                  minutes={nextIncompleteStep.minutes} 
+                <VisualTimer
+                  minutes={nextIncompleteStep.minutes}
                   stepText={nextIncompleteStep.text}
                   isActive={activeTimer === nextIncompleteStep.id}
                   onStart={() => setActiveTimer(nextIncompleteStep.id)}
@@ -585,7 +728,10 @@ export default function BreakItDownScreen() {
               </View>
               <Pressable
                 onPress={() => handleToggleStep(nextIncompleteStep.id)}
-                style={[styles.markDoneButton, { backgroundColor: theme.primary }]}
+                style={[
+                  styles.markDoneButton,
+                  { backgroundColor: theme.primary },
+                ]}
               >
                 <Feather name="check" size={20} color="#FFFFFF" />
                 <ThemedText style={{ color: "#FFFFFF", fontWeight: "600" }}>
@@ -600,13 +746,18 @@ export default function BreakItDownScreen() {
             <ThemedText type="h2" style={styles.allDoneTitle}>
               All bites complete
             </ThemedText>
-            <ThemedText style={[styles.allDoneMessage, { color: theme.textSecondary }]}>
+            <ThemedText
+              style={[styles.allDoneMessage, { color: theme.textSecondary }]}
+            >
               You did it. That was enough.
             </ThemedText>
             {existingTask && !existingTask.isArchived ? (
               <Pressable
                 onPress={() => setShowCompletionModal(true)}
-                style={[styles.archivePromptButton, { backgroundColor: theme.primary }]}
+                style={[
+                  styles.archivePromptButton,
+                  { backgroundColor: theme.primary },
+                ]}
               >
                 <Feather name="archive" size={18} color="#FFFFFF" />
                 <ThemedText style={{ color: "#FFFFFF", fontWeight: "600" }}>
@@ -619,17 +770,20 @@ export default function BreakItDownScreen() {
 
         {incompleteSteps.length > 1 && nextIncompleteStep ? (
           <View style={styles.upcomingContainer}>
-            <Pressable 
+            <Pressable
               onPress={() => setShowMoreOptions(!showMoreOptions)}
               style={styles.upcomingHeader}
             >
-              <ThemedText style={[styles.upcomingLabel, { color: theme.textSecondary }]}>
-                {incompleteSteps.length - 1} more {incompleteSteps.length - 1 === 1 ? "bite" : "bites"} after this
+              <ThemedText
+                style={[styles.upcomingLabel, { color: theme.textSecondary }]}
+              >
+                {incompleteSteps.length - 1} more{" "}
+                {incompleteSteps.length - 1 === 1 ? "bite" : "bites"} after this
               </ThemedText>
-              <Feather 
-                name={showMoreOptions ? "chevron-up" : "chevron-down"} 
-                size={18} 
-                color={theme.textSecondary} 
+              <Feather
+                name={showMoreOptions ? "chevron-up" : "chevron-down"}
+                size={18}
+                color={theme.textSecondary}
               />
             </Pressable>
             {showMoreOptions ? (
@@ -644,16 +798,24 @@ export default function BreakItDownScreen() {
                     compact
                   />
                 )}
-                contentContainerStyle={{ gap: Spacing.sm, paddingTop: Spacing.sm }}
+                contentContainerStyle={{
+                  gap: Spacing.sm,
+                  paddingTop: Spacing.sm,
+                }}
                 showsVerticalScrollIndicator={false}
               />
             ) : null}
           </View>
         ) : null}
-        
+
         {completedSteps > 0 && completedSteps < steps.length ? (
-          <View style={[styles.stopOption, { paddingBottom: insets.bottom + Spacing.lg }]}>
-            <Pressable 
+          <View
+            style={[
+              styles.stopOption,
+              { paddingBottom: insets.bottom + Spacing.lg },
+            ]}
+          >
+            <Pressable
               onPress={() => navigation.goBack()}
               style={[styles.stopButton, { borderColor: theme.border }]}
             >
@@ -661,7 +823,9 @@ export default function BreakItDownScreen() {
                 Stop here for now
               </ThemedText>
             </Pressable>
-            <ThemedText style={[styles.stopHint, { color: theme.textSecondary }]}>
+            <ThemedText
+              style={[styles.stopHint, { color: theme.textSecondary }]}
+            >
               This still counts as progress
             </ThemedText>
           </View>
@@ -674,18 +838,34 @@ export default function BreakItDownScreen() {
           onRequestClose={() => setShowCompletionModal(false)}
         >
           <View style={styles.celebrationOverlay}>
-            <View style={[styles.celebrationCard, { backgroundColor: theme.backgroundDefault }]}>
-              <View style={[styles.celebrationIcon, { backgroundColor: theme.success + "20" }]}>
+            <View
+              style={[
+                styles.celebrationCard,
+                { backgroundColor: theme.backgroundDefault },
+              ]}
+            >
+              <View
+                style={[
+                  styles.celebrationIcon,
+                  { backgroundColor: theme.success + "20" },
+                ]}
+              >
                 <Feather name="archive" size={32} color={theme.success} />
               </View>
               <ThemedText type="h2" style={styles.celebrationTitle}>
                 Task Complete
               </ThemedText>
-              <ThemedText style={[styles.celebrationSubtitle, { color: theme.textSecondary }]}>
-                Would you like to archive this task? It will be hidden from your active list.
+              <ThemedText
+                style={[
+                  styles.celebrationSubtitle,
+                  { color: theme.textSecondary },
+                ]}
+              >
+                Would you like to archive this task? It will be hidden from your
+                active list.
               </ThemedText>
               <View style={styles.celebrationActions}>
-                <Pressable 
+                <Pressable
                   onPress={() => {
                     if (existingTask) {
                       triggerHaptic("success");
@@ -694,13 +874,16 @@ export default function BreakItDownScreen() {
                       navigation.goBack();
                     }
                   }}
-                  style={[styles.keepGoingButton, { backgroundColor: theme.primary }]}
+                  style={[
+                    styles.keepGoingButton,
+                    { backgroundColor: theme.primary },
+                  ]}
                 >
                   <ThemedText style={{ color: "#FFFFFF", fontWeight: "600" }}>
                     Yes, Archive It
                   </ThemedText>
                 </Pressable>
-                <Pressable 
+                <Pressable
                   onPress={() => setShowCompletionModal(false)}
                   style={[styles.stopHereButton, { borderColor: theme.border }]}
                 >
@@ -717,6 +900,8 @@ export default function BreakItDownScreen() {
           visible={showRewardModal}
           items={dopamineMenu}
           earnedTier={rewardTier ?? undefined}
+          headline={rewardCopy.rewardHeadline}
+          onRestoreDefaults={restoreDefaultDopamineRewards}
           onClose={handleRewardClose}
         />
 
@@ -727,26 +912,46 @@ export default function BreakItDownScreen() {
           onRequestClose={() => handleCelebrationChoice(true)}
         >
           <View style={styles.celebrationOverlay}>
-            <View style={[styles.celebrationCard, { backgroundColor: theme.backgroundDefault }]}>
-              <View style={[styles.celebrationIcon, { backgroundColor: theme.success + "20" }]}>
+            <View
+              style={[
+                styles.celebrationCard,
+                { backgroundColor: theme.backgroundDefault },
+              ]}
+            >
+              <View
+                style={[
+                  styles.celebrationIcon,
+                  { backgroundColor: theme.success + "20" },
+                ]}
+              >
                 <Feather name="star" size={32} color={theme.success} />
               </View>
               <ThemedText type="h2" style={styles.celebrationTitle}>
-                You did a thing!
+                {rewardCopy.title}
               </ThemedText>
-              <ThemedText style={[styles.celebrationSubtitle, { color: theme.textSecondary }]}>
-                That counts. You're allowed to stop now.
+              <ThemedText
+                style={[
+                  styles.celebrationSubtitle,
+                  { color: theme.textSecondary },
+                ]}
+              >
+                {rewardTier
+                  ? `${rewardCopy.subtitle} You earned a ${REWARD_DURATION_LABEL[rewardTier]} reward.`
+                  : rewardCopy.subtitle}
               </ThemedText>
               <View style={styles.celebrationActions}>
-                <Pressable 
+                <Pressable
                   onPress={() => handleCelebrationChoice(true)}
-                  style={[styles.keepGoingButton, { backgroundColor: theme.primary }]}
+                  style={[
+                    styles.keepGoingButton,
+                    { backgroundColor: theme.primary },
+                  ]}
                 >
                   <ThemedText style={{ color: "#FFFFFF", fontWeight: "600" }}>
                     Keep Going
                   </ThemedText>
                 </Pressable>
-                <Pressable 
+                <Pressable
                   onPress={() => handleCelebrationChoice(false)}
                   style={[styles.stopHereButton, { borderColor: theme.border }]}
                 >
@@ -777,7 +982,7 @@ export default function BreakItDownScreen() {
         <View style={styles.minimalContent}>
           <View style={styles.section}>
             <ThemedText type="h3" style={styles.sectionTitle}>
-              What's freezing you?
+              What&apos;s freezing you?
             </ThemedText>
             <ScrollView
               horizontal
@@ -795,7 +1000,10 @@ export default function BreakItDownScreen() {
                   style={[
                     styles.quickChip,
                     {
-                      backgroundColor: title === chip ? theme.primary : theme.backgroundDefault,
+                      backgroundColor:
+                        title === chip
+                          ? theme.primary
+                          : theme.backgroundDefault,
                     },
                   ]}
                 >
@@ -829,7 +1037,7 @@ export default function BreakItDownScreen() {
 
           <View style={styles.section}>
             <ThemedText type="h3" style={styles.sectionTitle}>
-              What's the tiniest first bite?
+              What&apos;s the tiniest first bite?
             </ThemedText>
             <TextInput
               style={[
@@ -854,7 +1062,9 @@ export default function BreakItDownScreen() {
               style={[
                 styles.startButton,
                 {
-                  backgroundColor: canStartMinimal ? theme.primary : theme.backgroundSecondary,
+                  backgroundColor: canStartMinimal
+                    ? theme.primary
+                    : theme.backgroundSecondary,
                 },
               ]}
             >
@@ -869,7 +1079,9 @@ export default function BreakItDownScreen() {
               </ThemedText>
             </Pressable>
 
-            <ThemedText style={[styles.minimalHint, { color: theme.textSecondary }]}>
+            <ThemedText
+              style={[styles.minimalHint, { color: theme.textSecondary }]}
+            >
               You can add more bites after. Just start with one.
             </ThemedText>
 
@@ -926,7 +1138,9 @@ export default function BreakItDownScreen() {
                 styles.wizardDot,
                 {
                   backgroundColor:
-                    n === wizardStep ? theme.primary : theme.backgroundSecondary,
+                    n === wizardStep
+                      ? theme.primary
+                      : theme.backgroundSecondary,
                   width: n === wizardStep ? 24 : 8,
                 },
               ]}
@@ -949,7 +1163,9 @@ export default function BreakItDownScreen() {
                     style={[
                       styles.categoryCard,
                       {
-                        backgroundColor: selected ? theme.primary : theme.backgroundDefault,
+                        backgroundColor: selected
+                          ? theme.primary
+                          : theme.backgroundDefault,
                         borderColor: selected ? theme.primary : theme.border,
                       },
                     ]}
@@ -1040,7 +1256,10 @@ export default function BreakItDownScreen() {
             {canAdvanceFromTask ? (
               <Pressable
                 onPress={handleWizardTaskNext}
-                style={[styles.wizardNextButton, { backgroundColor: theme.primary }]}
+                style={[
+                  styles.wizardNextButton,
+                  { backgroundColor: theme.primary },
+                ]}
               >
                 <ThemedText
                   style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 16 }}
@@ -1059,7 +1278,7 @@ export default function BreakItDownScreen() {
               style={styles.escapeHatch}
             >
               <ThemedText style={{ color: theme.textSecondary, fontSize: 13 }}>
-                I'll fill this in myself
+                I&apos;ll fill this in myself
               </ThemedText>
             </Pressable>
           </View>
@@ -1068,31 +1287,29 @@ export default function BreakItDownScreen() {
         {wizardStep === 3 ? (
           <View style={styles.wizardSection}>
             <ThemedText type="h2" style={styles.wizardQuestion}>
-              How's your energy right now?
+              How&apos;s your energy right now?
             </ThemedText>
             <View style={styles.energyCardRow}>
-              {(
-                [
-                  {
-                    level: "low" as EnergyLevel,
-                    label: "Low",
-                    hint: "Running on empty",
-                    icon: "feather" as const,
-                  },
-                  {
-                    level: "medium" as EnergyLevel,
-                    label: "Medium",
-                    hint: "Some capacity",
-                    icon: "sun" as const,
-                  },
-                  {
-                    level: "high" as EnergyLevel,
-                    label: "High",
-                    hint: "Ready to go",
-                    icon: "zap" as const,
-                  },
-                ]
-              ).map((opt) => (
+              {[
+                {
+                  level: "low" as EnergyLevel,
+                  label: "Low",
+                  hint: "Running on empty",
+                  icon: "feather" as const,
+                },
+                {
+                  level: "medium" as EnergyLevel,
+                  label: "Medium",
+                  hint: "Some capacity",
+                  icon: "sun" as const,
+                },
+                {
+                  level: "high" as EnergyLevel,
+                  label: "High",
+                  hint: "Ready to go",
+                  icon: "zap" as const,
+                },
+              ].map((opt) => (
                 <Pressable
                   key={opt.level}
                   onPress={() => handleWizardEnergySelect(opt.level)}
@@ -1105,9 +1322,14 @@ export default function BreakItDownScreen() {
                   ]}
                 >
                   <Feather name={opt.icon} size={28} color={theme.primary} />
-                  <ThemedText style={styles.energyWizardLabel}>{opt.label}</ThemedText>
+                  <ThemedText style={styles.energyWizardLabel}>
+                    {opt.label}
+                  </ThemedText>
                   <ThemedText
-                    style={[styles.energyWizardHint, { color: theme.textSecondary }]}
+                    style={[
+                      styles.energyWizardHint,
+                      { color: theme.textSecondary },
+                    ]}
                   >
                     {opt.hint}
                   </ThemedText>
@@ -1124,7 +1346,7 @@ export default function BreakItDownScreen() {
               style={styles.escapeHatch}
             >
               <ThemedText style={{ color: theme.textSecondary, fontSize: 13 }}>
-                I'll fill this in myself
+                I&apos;ll fill this in myself
               </ThemedText>
             </Pressable>
           </View>
@@ -1145,9 +1367,11 @@ export default function BreakItDownScreen() {
     >
       <View style={styles.section}>
         <ThemedText type="h3" style={styles.sectionTitle}>
-          What's freezing you?
+          What&apos;s freezing you?
         </ThemedText>
-        <ThemedText style={[styles.sectionHint, { color: theme.textSecondary }]}>
+        <ThemedText
+          style={[styles.sectionHint, { color: theme.textSecondary }]}
+        >
           Name the task that feels impossible right now
         </ThemedText>
         <TextInput
@@ -1167,14 +1391,16 @@ export default function BreakItDownScreen() {
         />
         {!title.trim() ? (
           <View style={styles.examplesContainer}>
-            <ThemedText style={[styles.examplesLabel, { color: theme.textSecondary }]}>
+            <ThemedText
+              style={[styles.examplesLabel, { color: theme.textSecondary }]}
+            >
               Common tasks to break down:
             </ThemedText>
             <View style={styles.exampleChips}>
               {[
                 "Reply to emails",
                 "Clean my room",
-                "Do laundry", 
+                "Do laundry",
                 "Make a phone call",
                 "Schedule appointment",
                 "Pay bills",
@@ -1188,9 +1414,14 @@ export default function BreakItDownScreen() {
                     setTitle(example);
                     setSteps(getTemplateSteps(example));
                   }}
-                  style={[styles.exampleChip, { backgroundColor: theme.backgroundDefault }]}
+                  style={[
+                    styles.exampleChip,
+                    { backgroundColor: theme.backgroundDefault },
+                  ]}
                 >
-                  <ThemedText style={[styles.exampleChipText, { color: theme.text }]}>
+                  <ThemedText
+                    style={[styles.exampleChipText, { color: theme.text }]}
+                  >
                     {example}
                   </ThemedText>
                 </Pressable>
@@ -1206,10 +1437,12 @@ export default function BreakItDownScreen() {
         <ThemedText type="h3" style={styles.sectionTitle}>
           Break it into bites
         </ThemedText>
-        <ThemedText style={[styles.sectionHint, { color: theme.textSecondary }]}>
+        <ThemedText
+          style={[styles.sectionHint, { color: theme.textSecondary }]}
+        >
           Each bite should take 2-10 minutes
         </ThemedText>
-        
+
         <View style={styles.addStepCard}>
           <TextInput
             style={[
@@ -1227,7 +1460,7 @@ export default function BreakItDownScreen() {
             onSubmitEditing={handleAddStep}
             returnKeyType="done"
           />
-          
+
           <View style={styles.stepControls}>
             <View style={styles.timePresets}>
               {[2, 5, 10].map((mins) => (
@@ -1240,14 +1473,19 @@ export default function BreakItDownScreen() {
                   style={[
                     styles.timePresetChip,
                     {
-                      backgroundColor: newStepMinutes === mins ? theme.primary : theme.backgroundDefault,
+                      backgroundColor:
+                        newStepMinutes === mins
+                          ? theme.primary
+                          : theme.backgroundDefault,
                     },
                   ]}
                 >
                   <ThemedText
                     style={[
                       styles.timePresetText,
-                      { color: newStepMinutes === mins ? "#FFFFFF" : theme.text },
+                      {
+                        color: newStepMinutes === mins ? "#FFFFFF" : theme.text,
+                      },
                     ]}
                   >
                     {mins} min
@@ -1255,16 +1493,28 @@ export default function BreakItDownScreen() {
                 </Pressable>
               ))}
             </View>
-            
+
             <Pressable
               onPress={handleAddStep}
               style={[
-                styles.addButton, 
-                { backgroundColor: newStepText.trim() ? theme.primary : theme.backgroundDefault }
+                styles.addButton,
+                {
+                  backgroundColor: newStepText.trim()
+                    ? theme.primary
+                    : theme.backgroundDefault,
+                },
               ]}
             >
-              <Feather name="plus" size={20} color={newStepText.trim() ? "#FFFFFF" : theme.textSecondary} />
-              <ThemedText style={{ color: newStepText.trim() ? "#FFFFFF" : theme.textSecondary }}>
+              <Feather
+                name="plus"
+                size={20}
+                color={newStepText.trim() ? "#FFFFFF" : theme.textSecondary}
+              />
+              <ThemedText
+                style={{
+                  color: newStepText.trim() ? "#FFFFFF" : theme.textSecondary,
+                }}
+              >
                 Add
               </ThemedText>
             </Pressable>
@@ -1272,16 +1522,21 @@ export default function BreakItDownScreen() {
 
           {steps.length === 0 ? (
             <View style={styles.biteExamplesContainer}>
-              <Pressable 
+              <Pressable
                 onPress={() => setShowBiteInspiration(!showBiteInspiration)}
                 style={styles.inspirationToggle}
               >
-                <Feather 
-                  name={showBiteInspiration ? "chevron-down" : "chevron-right"} 
-                  size={16} 
-                  color={theme.primary} 
+                <Feather
+                  name={showBiteInspiration ? "chevron-down" : "chevron-right"}
+                  size={16}
+                  color={theme.primary}
                 />
-                <ThemedText style={[styles.inspirationToggleText, { color: theme.primary }]}>
+                <ThemedText
+                  style={[
+                    styles.inspirationToggleText,
+                    { color: theme.primary },
+                  ]}
+                >
                   Need inspiration?
                 </ThemedText>
               </Pressable>
@@ -1303,17 +1558,31 @@ export default function BreakItDownScreen() {
                           minutes: bite.mins,
                           completed: false,
                         };
-                        setSteps(prev => [...prev, newStep]);
+                        setSteps((prev) => [...prev, newStep]);
                       }}
-                      style={[styles.biteExample, { backgroundColor: theme.backgroundDefault }]}
+                      style={[
+                        styles.biteExample,
+                        { backgroundColor: theme.backgroundDefault },
+                      ]}
                     >
                       <View style={styles.biteExampleContent}>
-                        <ThemedText style={styles.biteExampleText}>{bite.text}</ThemedText>
-                        <ThemedText style={[styles.biteExampleTime, { color: theme.textSecondary }]}>
+                        <ThemedText style={styles.biteExampleText}>
+                          {bite.text}
+                        </ThemedText>
+                        <ThemedText
+                          style={[
+                            styles.biteExampleTime,
+                            { color: theme.textSecondary },
+                          ]}
+                        >
                           {bite.mins} min
                         </ThemedText>
                       </View>
-                      <Feather name="plus-circle" size={18} color={theme.primary} />
+                      <Feather
+                        name="plus-circle"
+                        size={18}
+                        color={theme.primary}
+                      />
                     </Pressable>
                   ))}
                 </View>
@@ -1325,8 +1594,12 @@ export default function BreakItDownScreen() {
         {steps.length > 0 ? (
           <View style={styles.stepsSection}>
             <View style={styles.stepsHeader}>
-              <ThemedText style={styles.stepsTitle}>Your bites ({steps.length})</ThemedText>
-              <ThemedText style={[styles.stepsTime, { color: theme.textSecondary }]}>
+              <ThemedText style={styles.stepsTitle}>
+                Your bites ({steps.length})
+              </ThemedText>
+              <ThemedText
+                style={[styles.stepsTime, { color: theme.textSecondary }]}
+              >
                 ~{totalMinutes} min total
               </ThemedText>
             </View>
@@ -1338,7 +1611,9 @@ export default function BreakItDownScreen() {
                   index={index}
                   onToggle={() => handleToggleStep(step.id)}
                   onRemove={() => handleRemoveStep(step.id)}
-                  onEdit={(text, minutes) => handleEditStep(step.id, text, minutes)}
+                  onEdit={(text, minutes) =>
+                    handleEditStep(step.id, text, minutes)
+                  }
                   onMoveUp={() => handleMoveStep(step.id, "up")}
                   onMoveDown={() => handleMoveStep(step.id, "down")}
                   isFirst={index === 0}
@@ -1357,7 +1632,9 @@ export default function BreakItDownScreen() {
         <ThemedText type="h3" style={styles.sectionTitle}>
           Energy needed
         </ThemedText>
-        <ThemedText style={[styles.sectionHint, { color: theme.textSecondary }]}>
+        <ThemedText
+          style={[styles.sectionHint, { color: theme.textSecondary }]}
+        >
           Match this task to your capacity
         </ThemedText>
         <View style={styles.energyContainer}>

@@ -1,21 +1,20 @@
-import React, { useState } from "react";
-import { StyleSheet, View, Pressable, Modal } from "react-native";
+import React from "react";
+import { StyleSheet, View, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { triggerHaptic } from "@/lib/haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { useAppStore } from "@/lib/store";
 import { getRoomConfig } from "@/components/WeeklyRoomBadge";
+import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 import type { WeeklyRoom } from "@/lib/types";
 
 interface WeeklyRoomSectionProps {
   room: WeeklyRoom;
-  compact?: boolean;
 }
-
-const ROOMS: WeeklyRoom[] = ["gentle", "build", "repair", "chaos"];
 
 const ROOM_DESCRIPTIONS: Record<WeeklyRoom, string> = {
   chaos: "Survival mode. One thing at a time.",
@@ -24,260 +23,120 @@ const ROOM_DESCRIPTIONS: Record<WeeklyRoom, string> = {
   repair: "Catching up gently on what slipped.",
 };
 
-const ROOM_COMPACT_COPY: Record<WeeklyRoom, string> = {
-  gentle: "Gentle mode · You can stop after one bite",
-  chaos: "Chaos mode · One thing is enough today",
-  build: "Build mode · Start momentum",
-  repair: "Repair mode · No shame, just re-enter",
+const TODAY_RULES: Record<WeeklyRoom, string> = {
+  chaos: "Less bad is good enough.",
+  gentle: "You can stop after one bite.",
+  build: "Small momentum compounds.",
+  repair: "Maintenance isn't failure.",
 };
 
-export function WeeklyRoomSection({
-  room,
-  compact = false,
-}: WeeklyRoomSectionProps) {
+export function WeeklyRoomSection({ room }: WeeklyRoomSectionProps) {
   const { theme } = useTheme();
-  const { setWeeklyRoom } = useAppStore();
-  const [showSelector, setShowSelector] = useState(false);
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const config = getRoomConfig(room);
   const roomColor = theme[
     `room${room.charAt(0).toUpperCase() + room.slice(1)}` as keyof typeof theme
   ] as string;
-  const description = ROOM_DESCRIPTIONS[room];
 
-  const handlePress = () => {
+  const handleOpenSelector = () => {
     triggerHaptic("light");
-    setShowSelector(true);
-  };
-
-  const handleSelectRoom = (selectedRoom: WeeklyRoom) => {
-    triggerHaptic("success");
-    setWeeklyRoom(selectedRoom);
-    setShowSelector(false);
+    navigation.navigate("WeeklyRoomSetup", { mode: "change" });
   };
 
   return (
-    <>
-      <Pressable onPress={handlePress}>
-        <View
-          style={[
-            compact ? styles.compactCard : styles.card,
-            { backgroundColor: roomColor },
-          ]}
-        >
-          <View style={styles.header}>
-            <Feather name={config.icon} size={20} color={theme.text} />
-            <ThemedText style={compact ? styles.compactLabel : styles.label}>
-              {compact ? ROOM_COMPACT_COPY[room] : config.label}
-            </ThemedText>
-            <View style={styles.changeHint}>
-              <Feather name="edit-2" size={13} color={theme.textSecondary} />
-              <ThemedText
-                style={[styles.changeLabel, { color: theme.textSecondary }]}
-              >
-                change week
-              </ThemedText>
-            </View>
-          </View>
-
-          {!compact ? (
-            <>
-              <ThemedText style={[styles.description, { color: theme.text }]}>
-                {description}
-              </ThemedText>
-
-              <ThemedText
-                style={[styles.mantra, { color: theme.textSecondary }]}
-              >
-                {config.mantra}
-              </ThemedText>
-            </>
-          ) : null}
+    <View style={[styles.card, { backgroundColor: roomColor }]}>
+      <View style={styles.header}>
+        <View style={styles.titleRow}>
+          <Feather name={config.icon} size={20} color={theme.text} />
+          <ThemedText style={styles.label}>{config.label}</ThemedText>
         </View>
-      </Pressable>
 
-      <Modal
-        visible={showSelector}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowSelector(false)}
-      >
         <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowSelector(false)}
+          onPress={handleOpenSelector}
+          accessibilityRole="button"
+          accessibilityLabel="Change weekly room"
+          style={styles.changeButton}
         >
-          <View
-            style={[
-              styles.modalContent,
-              { backgroundColor: theme.backgroundRoot },
-            ]}
+          <Feather name="edit-2" size={14} color={theme.textSecondary} />
+          <ThemedText
+            style={[styles.changeLabel, { color: theme.textSecondary }]}
           >
-            <ThemedText type="h3" style={styles.modalTitle}>
-              Choose Your Week
-            </ThemedText>
-            <ThemedText
-              style={[styles.modalSubtitle, { color: theme.textSecondary }]}
-            >
-              Match your capacity to your week
-            </ThemedText>
-
-            {ROOMS.map((r) => {
-              const rConfig = getRoomConfig(r);
-              const rColor = theme[
-                `room${r.charAt(0).toUpperCase() + r.slice(1)}` as keyof typeof theme
-              ] as string;
-              const isSelected = r === room;
-
-              return (
-                <Pressable
-                  key={r}
-                  onPress={() => handleSelectRoom(r)}
-                  style={[
-                    styles.roomOption,
-                    { backgroundColor: rColor },
-                    isSelected && styles.roomOptionSelected,
-                  ]}
-                >
-                  <View style={styles.roomOptionHeader}>
-                    <Feather name={rConfig.icon} size={20} color={theme.text} />
-                    <ThemedText style={styles.roomOptionLabel}>
-                      {rConfig.label}
-                    </ThemedText>
-                    {isSelected ? (
-                      <Feather
-                        name="check"
-                        size={18}
-                        color={theme.primary}
-                        style={styles.checkIcon}
-                      />
-                    ) : null}
-                  </View>
-                  <ThemedText
-                    style={[
-                      styles.roomOptionDesc,
-                      { color: theme.textSecondary },
-                    ]}
-                  >
-                    {ROOM_DESCRIPTIONS[r]}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-
-            <Pressable
-              onPress={() => setShowSelector(false)}
-              style={[
-                styles.cancelButton,
-                { borderColor: theme.textSecondary },
-              ]}
-            >
-              <ThemedText style={{ color: theme.textSecondary }}>
-                Cancel
-              </ThemedText>
-            </Pressable>
-          </View>
+            change
+          </ThemedText>
         </Pressable>
-      </Modal>
-    </>
+      </View>
+
+      <ThemedText style={[styles.description, { color: theme.text }]}>
+        {ROOM_DESCRIPTIONS[room]}
+      </ThemedText>
+
+      <View
+        style={[
+          styles.ruleContainer,
+          { backgroundColor: "rgba(255,255,255,0.42)" },
+        ]}
+      >
+        <ThemedText style={[styles.ruleLabel, { color: theme.textSecondary }]}>
+          Today&apos;s rule
+        </ThemedText>
+        <ThemedText style={styles.ruleText}>{TODAY_RULES[room]}</ThemedText>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
     padding: Spacing.lg,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.md,
     gap: Spacing.sm,
-  },
-  compactCard: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.sm,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     gap: Spacing.sm,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    flex: 1,
   },
   label: {
     fontWeight: "700",
-    fontSize: 17,
-    flex: 1,
+    fontSize: 18,
+    flexShrink: 1,
   },
-  compactLabel: {
-    fontWeight: "600",
-    fontSize: 14,
-    flex: 1,
-  },
-  changeHint: {
+  changeButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginLeft: "auto",
+    minHeight: 44,
+    paddingHorizontal: Spacing.sm,
   },
   changeLabel: {
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: "600",
   },
   description: {
     fontSize: 14,
     lineHeight: 20,
   },
-  mantra: {
-    fontSize: 13,
-    fontStyle: "italic",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: Spacing.lg,
-  },
-  modalContent: {
-    width: "100%",
-    maxWidth: 400,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.lg,
-  },
-  modalTitle: {
-    textAlign: "center",
-    marginBottom: Spacing.xs,
-  },
-  modalSubtitle: {
-    textAlign: "center",
-    fontStyle: "italic",
-    marginBottom: Spacing.lg,
-  },
-  roomOption: {
-    padding: Spacing.md,
+  ruleContainer: {
     borderRadius: BorderRadius.sm,
-    marginBottom: Spacing.sm,
+    padding: Spacing.sm,
+    gap: 4,
   },
-  roomOptionSelected: {
-    borderWidth: 2,
-    borderColor: "rgba(0,0,0,0.1)",
+  ruleLabel: {
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
-  roomOptionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-    marginBottom: Spacing.xs,
-  },
-  roomOptionLabel: {
+  ruleText: {
+    fontSize: 14,
     fontWeight: "600",
-    fontSize: 16,
-    flex: 1,
-  },
-  checkIcon: {
-    marginLeft: "auto",
-  },
-  roomOptionDesc: {
-    fontSize: 13,
-  },
-  cancelButton: {
-    marginTop: Spacing.md,
-    padding: Spacing.md,
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: BorderRadius.sm,
   },
 });
