@@ -1,9 +1,8 @@
-import React from "react";
-import { View, StyleSheet, Pressable } from "react-native";
+import React, { useState } from "react";
+import { View, StyleSheet, Platform, Pressable } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -32,29 +31,32 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-function FloatingActionButton() {
+function FloatingActionButton({ visible }: { visible: boolean }) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
-  const handlePressIn = () => {
-    scale.value = withSpring(0.95, { damping: 15, stiffness: 150 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 150 });
-  };
+  if (!visible) {
+    return null;
+  }
 
   return (
     <AnimatedPressable
       onPress={() => navigation.navigate("BreakItDown")}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
+      onPressIn={() => {
+        scale.value = withSpring(0.95, { damping: 15, stiffness: 150 });
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, { damping: 15, stiffness: 150 });
+      }}
+      accessibilityRole="button"
+      accessibilityLabel="Create or break down a task"
       style={[
         styles.fab,
         {
@@ -72,11 +74,24 @@ function FloatingActionButton() {
 
 export default function MainTabNavigator() {
   const { theme, isDark } = useTheme();
+  const [activeTab, setActiveTab] = useState<keyof MainTabParamList>("HomeTab");
 
   return (
     <View style={{ flex: 1 }}>
       <Tab.Navigator
         initialRouteName="HomeTab"
+        screenListeners={{
+          state: (event) => {
+            const state = event.data.state;
+            if (!state) return;
+            const currentRoute = state.routes[state.index]?.name as
+              | keyof MainTabParamList
+              | undefined;
+            if (currentRoute) {
+              setActiveTab(currentRoute);
+            }
+          },
+        }}
         screenOptions={{
           tabBarActiveTintColor: theme.tabIconSelected,
           tabBarInactiveTintColor: theme.tabIconDefault,
@@ -141,7 +156,7 @@ export default function MainTabNavigator() {
           }}
         />
       </Tab.Navigator>
-      <FloatingActionButton />
+      <FloatingActionButton visible={activeTab !== "HomeTab"} />
     </View>
   );
 }
