@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { AppState, Task, EnergyLevel, WeeklyRoom, Step, DailyReflection, ThoughtItem, DopamineItem, DopamineCost, ColorSchemePreference } from "@/lib/types";
+import type { AppState, Task, EnergyLevel, WeeklyRoom, Step, DailyReflection, ThoughtItem, DopamineItem, DopamineCost, ColorSchemePreference, QuietRoomMode } from "@/lib/types";
 
 interface AppStore extends AppState {
   setEnergyLevel: (level: EnergyLevel) => void;
@@ -25,6 +25,8 @@ interface AppStore extends AppState {
   setDisplayName: (name: string) => void;
   setAvatarIndex: (index: number) => void;
   setHapticsEnabled: (enabled: boolean) => void;
+  setReduceMotion: (enabled: boolean) => void;
+  setQuietRoomMode: (mode: QuietRoomMode) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
   setEnergyCheckInEnabled: (enabled: boolean) => void;
   setBookendCompleted: (completed: boolean) => void;
@@ -47,6 +49,8 @@ const initialState: AppState = {
   displayName: "",
   avatarIndex: 0,
   hapticsEnabled: true,
+  reduceMotion: false,
+  quietRoomMode: "silent",
   notificationsEnabled: false,
   energyCheckInEnabled: true,
   bookendCompleted: false,
@@ -263,6 +267,10 @@ export const useAppStore = create<AppStore>()(
       setAvatarIndex: (index) => set({ avatarIndex: index }),
       
       setHapticsEnabled: (enabled) => set({ hapticsEnabled: enabled }),
+
+      setReduceMotion: (enabled) => set({ reduceMotion: enabled }),
+
+      setQuietRoomMode: (mode) => set({ quietRoomMode: mode }),
       
       setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
       
@@ -330,6 +338,14 @@ export const useAppStore = create<AppStore>()(
 
           if (!state.colorScheme) {
             state.colorScheme = "light";
+          }
+
+          if (typeof state.reduceMotion !== "boolean") {
+            state.reduceMotion = false;
+          }
+
+          if (!state.quietRoomMode) {
+            state.quietRoomMode = "silent";
           }
           
           state.tasks = state.tasks.map((task) => ({

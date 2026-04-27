@@ -15,6 +15,8 @@ import { VisualTimer } from "@/components/VisualTimer";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { DynamicFooter } from "@/components/DynamicFooter";
+import { PresenceStrip } from "@/components/PresenceStrip";
+import { RewardRevealModal, durationFromMinutes } from "@/components/RewardRevealModal";
 import { useAppStore } from "@/lib/store";
 import { useSnackbarStore } from "@/lib/snackbarStore";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
@@ -231,7 +233,7 @@ export default function BreakItDownScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "BreakItDown">>();
 
-  const { tasks, addTask, updateTask, toggleStepComplete, restoreStep, archiveTask } = useAppStore();
+  const { tasks, addTask, updateTask, toggleStepComplete, restoreStep, archiveTask, dopamineMenu } = useAppStore();
   const showSnackbar = useSnackbarStore((s) => s.show);
   
   const initialTaskId = route.params?.taskId ?? null;
@@ -255,7 +257,10 @@ export default function BreakItDownScreen() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [rewardTier, setRewardTier] = useState<import("@/lib/types").DopamineCost | null>(null);
   const [pendingArchivePrompt, setPendingArchivePrompt] = useState(false);
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [pendingNavigateBack, setPendingNavigateBack] = useState(false);
   const [showBiteInspiration, setShowBiteInspiration] = useState(false);
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
   const [wizardCategory, setWizardCategory] = useState<CategoryKey | null>(null);
@@ -495,6 +500,7 @@ export default function BreakItDownScreen() {
     }
 
     if (!wasCompleted && !skipCelebration) {
+      setRewardTier(durationFromMinutes(step.minutes));
       setShowCelebration(true);
     }
   }, [existingTask, toggleStepComplete, steps]);
@@ -506,10 +512,24 @@ export default function BreakItDownScreen() {
       setShowCompletionModal(true);
       return;
     }
+    if (dopamineMenu.length > 0 && rewardTier) {
+      setPendingNavigateBack(!keepGoing);
+      setShowRewardModal(true);
+      return;
+    }
     if (!keepGoing) {
       navigation.goBack();
     }
-  }, [navigation, pendingArchivePrompt]);
+  }, [navigation, pendingArchivePrompt, dopamineMenu.length, rewardTier]);
+
+  const handleRewardClose = useCallback(() => {
+    setShowRewardModal(false);
+    setRewardTier(null);
+    if (pendingNavigateBack) {
+      setPendingNavigateBack(false);
+      navigation.goBack();
+    }
+  }, [navigation, pendingNavigateBack]);
 
   if (viewMode === "work") {
     const incompleteSteps = steps.filter(s => !s.completed);
@@ -523,7 +543,11 @@ export default function BreakItDownScreen() {
               You can stop after any bite. Progress is valid.
             </ThemedText>
           </View>
-          
+
+          <View style={styles.presenceStripWrapper}>
+            <PresenceStrip variant="with you" />
+          </View>
+
           {completedSteps > 0 ? (
             <View style={styles.progressContainer}>
               <View style={[styles.progressBar, { backgroundColor: theme.backgroundDefault }]}>
@@ -688,6 +712,13 @@ export default function BreakItDownScreen() {
             </View>
           </View>
         </Modal>
+
+        <RewardRevealModal
+          visible={showRewardModal}
+          items={dopamineMenu}
+          earnedTier={rewardTier ?? undefined}
+          onClose={handleRewardClose}
+        />
 
         <Modal
           visible={showCelebration}
@@ -1598,6 +1629,9 @@ const styles = StyleSheet.create({
   },
   advancedLink: {
     paddingVertical: Spacing.md,
+  },
+  presenceStripWrapper: {
+    marginBottom: Spacing.md,
   },
   permissionBanner: {
     flexDirection: "row",

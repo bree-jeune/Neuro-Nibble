@@ -1,19 +1,12 @@
 import React, { useState, useCallback } from "react";
-import { View, StyleSheet, Pressable, FlatList, TextInput, Modal, Dimensions } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSequence,
-  ZoomIn,
-} from "react-native-reanimated";
+import { View, StyleSheet, Pressable, FlatList, TextInput, Dimensions } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { triggerHaptic } from "@/lib/haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { useAppStore } from "@/lib/store";
+import { RewardRevealModal } from "@/components/RewardRevealModal";
 import type { DopamineItem, DopamineCost } from "@/lib/types";
 
 interface DopamineVendingMachineProps {
@@ -23,9 +16,11 @@ interface DopamineVendingMachineProps {
 }
 
 const COST_CONFIG: Record<DopamineCost, { label: string; time: string; color: string; lightColor: string }> = {
-  micro: { label: "Micro", time: "2m", color: "#7BB3C9", lightColor: "#E3F0F5" },
-  snack: { label: "Snack", time: "15m", color: "#A98BC9", lightColor: "#EDE3F5" },
-  meal: { label: "Meal", time: "1hr", color: "#C9A87B", lightColor: "#F5EDE3" },
+  tiny: { label: "Tiny", time: "1m", color: "#7BB3C9", lightColor: "#E3F0F5" },
+  micro: { label: "Micro", time: "3m", color: "#7B9EA8", lightColor: "#E3ECF0" },
+  snack: { label: "Snack", time: "5m", color: "#A98BC9", lightColor: "#EDE3F5" },
+  meal: { label: "Meal", time: "10m", color: "#C9A87B", lightColor: "#F5EDE3" },
+  recovery: { label: "Recovery", time: "rest", color: "#A8BAA8", lightColor: "#E8F0E8" },
 };
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -35,22 +30,13 @@ const CARD_WIDTH = (SCREEN_WIDTH - CARD_MARGIN * 2 - CARD_GAP) / 2;
 
 function TreatCard({
   item,
-  isHighlighted,
-  isSpinning,
-  isWinner,
   onRemove,
 }: {
   item: DopamineItem;
-  isHighlighted: boolean;
-  isSpinning: boolean;
-  isWinner: boolean;
   onRemove: () => void;
 }) {
   const { theme } = useTheme();
   const config = COST_CONFIG[item.cost];
-
-  const shouldDim = isSpinning && !isHighlighted;
-  const showBorder = isHighlighted || isWinner;
 
   return (
     <View
@@ -58,11 +44,7 @@ function TreatCard({
         styles.treatCard,
         {
           backgroundColor: config.lightColor,
-          borderColor: showBorder ? config.color : "transparent",
-          borderWidth: showBorder ? 2 : 0,
           width: CARD_WIDTH,
-          opacity: shouldDim ? 0.4 : 1,
-          transform: [{ scale: isHighlighted && isSpinning ? 1.05 : 1 }],
         },
       ]}
     >
@@ -71,7 +53,13 @@ function TreatCard({
           <Feather name="clock" size={10} color="#FFFFFF" />
           <ThemedText style={styles.costBadgeText}>{config.time}</ThemedText>
         </View>
-        <Pressable onPress={onRemove} hitSlop={8}>
+        <Pressable
+          onPress={onRemove}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${item.text}`}
+          style={styles.removeBtn}
+        >
           <Feather name="x" size={16} color={theme.textSecondary} />
         </Pressable>
       </View>
@@ -90,7 +78,7 @@ function CostSelector({
   onSelect: (cost: DopamineCost) => void;
 }) {
   const { theme } = useTheme();
-  const costs: DopamineCost[] = ["micro", "snack", "meal"];
+  const costs: DopamineCost[] = ["tiny", "micro", "snack", "meal", "recovery"];
 
   return (
     <View style={styles.costSelectorContainer}>
@@ -101,6 +89,9 @@ function CostSelector({
           <Pressable
             key={cost}
             onPress={() => onSelect(cost)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isSelected }}
+            accessibilityLabel={`${config.label}, ${config.time}`}
             style={[
               styles.costOption,
               {
@@ -130,64 +121,15 @@ export function DopamineVendingMachine({
   onRemoveItem,
 }: DopamineVendingMachineProps) {
   const { theme } = useTheme();
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
-  const [winner, setWinner] = useState<DopamineItem | null>(null);
-  const [showModal, setShowModal] = useState(false);
+  const [showRewardModal, setShowRewardModal] = useState(false);
   const [newItemText, setNewItemText] = useState("");
-  const [selectedCost, setSelectedCost] = useState<DopamineCost>("micro");
+  const [selectedCost, setSelectedCost] = useState<DopamineCost>("snack");
 
-  const buttonScale = useSharedValue(1);
-  const buttonRotation = useSharedValue(0);
-
-  const handleSpin = useCallback(() => {
+  const handleOpenReward = useCallback(() => {
     if (items.length === 0) return;
-
     triggerHaptic("medium");
-    setIsSpinning(true);
-    setWinner(null);
-
-    buttonScale.value = withSequence(
-      withTiming(0.95, { duration: 100 }),
-      withTiming(1, { duration: 100 })
-    );
-
-    buttonRotation.value = withSequence(
-      withTiming(360, { duration: 600 }),
-      withTiming(0, { duration: 0 })
-    );
-
-    const maxSpins = 12 + Math.floor(Math.random() * 6);
-    const finalIndex = Math.floor(Math.random() * items.length);
-
-    const spinStep = (count: number) => {
-      if (count >= maxSpins) {
-        setHighlightedIndex(finalIndex);
-        setIsSpinning(false);
-        setWinner(items[finalIndex]);
-        setTimeout(() => setShowModal(true), 300);
-        triggerHaptic("success");
-        return;
-      }
-
-      setHighlightedIndex(count % items.length);
-      triggerHaptic("light");
-
-      let delay: number;
-      const progress = count / maxSpins;
-      if (progress < 0.5) {
-        delay = 60 + progress * 40;
-      } else if (progress < 0.8) {
-        delay = 80 + (progress - 0.5) * 200;
-      } else {
-        delay = 140 + (progress - 0.8) * 600;
-      }
-
-      setTimeout(() => spinStep(count + 1), delay);
-    };
-
-    spinStep(0);
-  }, [items, buttonScale, buttonRotation]);
+    setShowRewardModal(true);
+  }, [items.length]);
 
   const handleAddItem = useCallback(() => {
     if (newItemText.trim()) {
@@ -197,24 +139,9 @@ export function DopamineVendingMachine({
     }
   }, [newItemText, selectedCost, onAddItem]);
 
-  const handleCloseModal = useCallback(() => {
-    setShowModal(false);
-    setHighlightedIndex(null);
-  }, []);
-
-  const buttonStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: buttonScale.value },
-      { rotate: `${buttonRotation.value}deg` },
-    ],
-  }));
-
-  const renderItem = ({ item, index }: { item: DopamineItem; index: number }) => (
+  const renderItem = ({ item }: { item: DopamineItem }) => (
     <TreatCard
       item={item}
-      isHighlighted={highlightedIndex === index}
-      isSpinning={isSpinning}
-      isWinner={!isSpinning && winner?.id === item.id}
       onRemove={() => {
         triggerHaptic("light");
         onRemoveItem(item.id);
@@ -224,32 +151,33 @@ export function DopamineVendingMachine({
 
   return (
     <View style={styles.container}>
-      <Animated.View style={buttonStyle}>
-        <Pressable
-          onPress={handleSpin}
-          disabled={isSpinning || items.length === 0}
+      <Pressable
+        onPress={handleOpenReward}
+        disabled={items.length === 0}
+        accessibilityRole="button"
+        accessibilityLabel="Open reward picker"
+        style={[
+          styles.spinButton,
+          {
+            backgroundColor:
+              items.length === 0 ? theme.backgroundSecondary : theme.secondary,
+          },
+        ]}
+      >
+        <Feather
+          name="gift"
+          size={22}
+          color={items.length === 0 ? theme.textSecondary : "#FFFFFF"}
+        />
+        <ThemedText
           style={[
-            styles.spinButton,
-            {
-              backgroundColor: items.length === 0 ? theme.backgroundSecondary : theme.secondary,
-            },
+            styles.spinButtonText,
+            { color: items.length === 0 ? theme.textSecondary : "#FFFFFF" },
           ]}
         >
-          <Feather
-            name={isSpinning ? "loader" : "gift"}
-            size={24}
-            color={items.length === 0 ? theme.textSecondary : "#FFFFFF"}
-          />
-          <ThemedText
-            style={[
-              styles.spinButtonText,
-              { color: items.length === 0 ? theme.textSecondary : "#FFFFFF" },
-            ]}
-          >
-            {isSpinning ? "Dispensing..." : "Spin for Dopamine"}
-          </ThemedText>
-        </Pressable>
-      </Animated.View>
+          Pick a reward
+        </ThemedText>
+      </Pressable>
 
       {items.length > 0 ? (
         <FlatList
@@ -260,7 +188,6 @@ export function DopamineVendingMachine({
           columnWrapperStyle={styles.row}
           scrollEnabled={false}
           contentContainerStyle={styles.grid}
-          extraData={{ highlightedIndex, isSpinning, winner }}
         />
       ) : (
         <View style={[styles.emptyState, { backgroundColor: theme.backgroundSecondary }]}>
@@ -288,6 +215,8 @@ export function DopamineVendingMachine({
           <Pressable
             onPress={handleAddItem}
             disabled={!newItemText.trim()}
+            accessibilityRole="button"
+            accessibilityLabel="Add treat"
             style={[
               styles.addButton,
               { backgroundColor: newItemText.trim() ? theme.primary : theme.backgroundSecondary },
@@ -303,48 +232,11 @@ export function DopamineVendingMachine({
         <CostSelector selected={selectedCost} onSelect={setSelectedCost} />
       </View>
 
-      <Modal visible={showModal} transparent animationType="fade" onRequestClose={handleCloseModal}>
-        <View style={styles.modalOverlay}>
-          <Animated.View
-            entering={ZoomIn.springify().damping(12)}
-            style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}
-          >
-            {winner ? (
-              <>
-                <View
-                  style={[
-                    styles.winnerBadge,
-                    { backgroundColor: COST_CONFIG[winner.cost].lightColor },
-                  ]}
-                >
-                  <Feather name="gift" size={40} color={COST_CONFIG[winner.cost].color} />
-                </View>
-                <ThemedText style={[styles.modalLabel, { color: theme.textSecondary }]}>
-                  Your brain picked:
-                </ThemedText>
-                <ThemedText type="h2" style={[styles.modalTitle, { color: theme.text }]}>
-                  {winner.text}
-                </ThemedText>
-                <View style={[styles.timeBadge, { backgroundColor: COST_CONFIG[winner.cost].color }]}>
-                  <Feather name="clock" size={14} color="#FFFFFF" />
-                  <ThemedText style={styles.timeBadgeText}>
-                    {COST_CONFIG[winner.cost].time}
-                  </ThemedText>
-                </View>
-                <ThemedText style={[styles.permissionText, { color: theme.textSecondary }]}>
-                  You're allowed to enjoy this.
-                </ThemedText>
-                <Pressable
-                  onPress={handleCloseModal}
-                  style={[styles.doItButton, { backgroundColor: theme.primary }]}
-                >
-                  <ThemedText style={styles.doItButtonText}>Do it now</ThemedText>
-                </Pressable>
-              </>
-            ) : null}
-          </Animated.View>
-        </View>
-      </Modal>
+      <RewardRevealModal
+        visible={showRewardModal}
+        items={items}
+        onClose={() => setShowRewardModal(false)}
+      />
     </View>
   );
 }
@@ -435,9 +327,15 @@ const styles = StyleSheet.create({
     minHeight: 40,
   },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  removeBtn: {
+    minWidth: 32,
+    minHeight: 32,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -447,11 +345,13 @@ const styles = StyleSheet.create({
   },
   costOption: {
     flex: 1,
+    minHeight: 44,
     paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.sm,
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
     alignItems: "center",
+    justifyContent: "center",
   },
   costOptionText: {
     fontSize: 14,

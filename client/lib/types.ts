@@ -45,7 +45,9 @@ export interface ThoughtItem {
   createdAt: string;
 }
 
-export type DopamineCost = "micro" | "snack" | "meal";
+export type DopamineCost = "tiny" | "micro" | "snack" | "meal" | "recovery";
+
+export type QuietRoomMode = "silent" | "gentle" | "sprint" | "recovery";
 
 export interface DopamineItem {
   id: string;
@@ -67,6 +69,8 @@ export interface AppState {
   displayName: string;
   avatarIndex: number;
   hapticsEnabled: boolean;
+  reduceMotion: boolean;
+  quietRoomMode: QuietRoomMode;
   notificationsEnabled: boolean;
   energyCheckInEnabled: boolean;
   bookendCompleted: boolean;

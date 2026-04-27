@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect, useRef, useLayoutEffect, useMemo } from "react";
-import { View, ScrollView, StyleSheet, Pressable, Modal, TextInput, Animated, Easing } from "react-native";
+import React, { useState, useCallback, useLayoutEffect, useMemo } from "react";
+import { View, ScrollView, StyleSheet, Pressable, Modal, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -15,6 +15,7 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import { DynamicFooter } from "@/components/DynamicFooter";
 import { EnergyCard } from "@/components/EnergyCard";
 import { WeeklyRoomSection } from "@/components/WeeklyRoomSection";
+import { BodyDoublingRoomCard } from "@/components/BodyDoublingRoomCard";
 import { RecentTaskCard } from "@/components/RecentTaskCard";
 import { DailyBookend } from "@/components/DailyBookend";
 import { useAppStore } from "@/lib/store";
@@ -34,7 +35,6 @@ export default function HomeScreen() {
   const [showEnergyCheck, setShowEnergyCheck] = useState(false);
   const [reflectionText, setReflectionText] = useState("");
   const [endDayDopamineItem, setEndDayDopamineItem] = useState<string | null>(null);
-  const [bodyDoublingCount, setBodyDoublingCount] = useState(0);
 
   const { 
     energyLevel, 
@@ -69,48 +69,6 @@ export default function HomeScreen() {
     })
     .sort((a, b) => new Date(b.lastWorkedOn!).getTime() - new Date(a.lastWorkedOn!).getTime())
     .slice(0, 3);
-
-  const getLiveUserCount = useCallback(() => {
-    const now = new Date();
-    const utcHour = now.getUTCHours();
-    const isBusinessHours = utcHour >= 8 && utcHour <= 22;
-    const baseCount = isBusinessHours ? 60 : 20;
-    const minCount = isBusinessHours ? 40 : 10;
-    const maxCount = isBusinessHours ? 80 : 30;
-    const variance = Math.floor(Math.random() * 7) - 3;
-    return Math.min(maxCount, Math.max(minCount, baseCount + variance));
-  }, []);
-  
-  useEffect(() => {
-    setBodyDoublingCount(getLiveUserCount());
-    const interval = setInterval(() => {
-      setBodyDoublingCount(getLiveUserCount());
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [getLiveUserCount]);
-
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 0.4,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    pulse.start();
-    return () => pulse.stop();
-  }, [pulseAnim]);
 
   const hasTouchedTasksToday = tasks.some((t) => {
     const today = new Date().toISOString().split("T")[0];
@@ -223,15 +181,6 @@ export default function HomeScreen() {
   const showEndDayCard =
     !bookendCompleted &&
     (weeklyRoom === "chaos" || weeklyRoom === "gentle" || hasTouchedTasksToday);
-
-  const bodyDoublingCopy =
-    weeklyRoom === "gentle"
-      ? `${bodyDoublingCount} others resting alongside you`
-      : weeklyRoom === "build"
-        ? `${bodyDoublingCount} people building alongside you`
-        : weeklyRoom === "repair"
-          ? `${bodyDoublingCount} others catching up alongside you`
-          : `${bodyDoublingCount} working now`;
 
   const renderRoomContent = () => {
     if (weeklyRoom === "chaos") {
@@ -445,19 +394,8 @@ export default function HomeScreen() {
         </View>
 
         {showBodyDoubling ? (
-          <View style={[styles.bodyDoublingPill, { backgroundColor: theme.primary + "15" }]}>
-            <Animated.View
-              style={[
-                styles.pulsingDot,
-                {
-                  backgroundColor: theme.success,
-                  opacity: pulseAnim,
-                },
-              ]}
-            />
-            <ThemedText style={[styles.bodyDoublingText, { color: theme.primary }]}>
-              {bodyDoublingCopy}
-            </ThemedText>
+          <View style={styles.quietRoomWrapper}>
+            <BodyDoublingRoomCard />
           </View>
         ) : null}
 
@@ -914,6 +852,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     fontSize: 15,
     textAlignVertical: "top",
+  },
+  quietRoomWrapper: {
+    marginTop: Spacing.md,
   },
   bodyDoublingPill: {
     flexDirection: "row",
