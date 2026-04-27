@@ -12,6 +12,7 @@ import type { WeeklyRoom } from "@/lib/types";
 
 interface WeeklyRoomSectionProps {
   room: WeeklyRoom;
+  compact?: boolean;
 }
 
 const ROOMS: WeeklyRoom[] = ["gentle", "build", "repair", "chaos"];
@@ -23,13 +24,25 @@ const ROOM_DESCRIPTIONS: Record<WeeklyRoom, string> = {
   repair: "Catching up gently on what slipped.",
 };
 
-export function WeeklyRoomSection({ room }: WeeklyRoomSectionProps) {
+const ROOM_COMPACT_COPY: Record<WeeklyRoom, string> = {
+  gentle: "Gentle mode · You can stop after one bite",
+  chaos: "Chaos mode · One thing is enough today",
+  build: "Build mode · Start momentum",
+  repair: "Repair mode · No shame, just re-enter",
+};
+
+export function WeeklyRoomSection({
+  room,
+  compact = false,
+}: WeeklyRoomSectionProps) {
   const { theme } = useTheme();
   const { setWeeklyRoom } = useAppStore();
   const [showSelector, setShowSelector] = useState(false);
 
   const config = getRoomConfig(room);
-  const roomColor = theme[`room${room.charAt(0).toUpperCase() + room.slice(1)}` as keyof typeof theme] as string;
+  const roomColor = theme[
+    `room${room.charAt(0).toUpperCase() + room.slice(1)}` as keyof typeof theme
+  ] as string;
   const description = ROOM_DESCRIPTIONS[room];
 
   const handlePress = () => {
@@ -46,25 +59,40 @@ export function WeeklyRoomSection({ room }: WeeklyRoomSectionProps) {
   return (
     <>
       <Pressable onPress={handlePress}>
-        <View style={[styles.card, { backgroundColor: roomColor }]}>
+        <View
+          style={[
+            compact ? styles.compactCard : styles.card,
+            { backgroundColor: roomColor },
+          ]}
+        >
           <View style={styles.header}>
             <Feather name={config.icon} size={20} color={theme.text} />
-            <ThemedText style={styles.label}>{config.label}</ThemedText>
+            <ThemedText style={compact ? styles.compactLabel : styles.label}>
+              {compact ? ROOM_COMPACT_COPY[room] : config.label}
+            </ThemedText>
             <View style={styles.changeHint}>
               <Feather name="edit-2" size={13} color={theme.textSecondary} />
-              <ThemedText style={[styles.changeLabel, { color: theme.textSecondary }]}>
+              <ThemedText
+                style={[styles.changeLabel, { color: theme.textSecondary }]}
+              >
                 change week
               </ThemedText>
             </View>
           </View>
 
-          <ThemedText style={[styles.description, { color: theme.text }]}>
-            {description}
-          </ThemedText>
+          {!compact ? (
+            <>
+              <ThemedText style={[styles.description, { color: theme.text }]}>
+                {description}
+              </ThemedText>
 
-          <ThemedText style={[styles.mantra, { color: theme.textSecondary }]}>
-            {config.mantra}
-          </ThemedText>
+              <ThemedText
+                style={[styles.mantra, { color: theme.textSecondary }]}
+              >
+                {config.mantra}
+              </ThemedText>
+            </>
+          ) : null}
         </View>
       </Pressable>
 
@@ -78,17 +106,26 @@ export function WeeklyRoomSection({ room }: WeeklyRoomSectionProps) {
           style={styles.modalOverlay}
           onPress={() => setShowSelector(false)}
         >
-          <View style={[styles.modalContent, { backgroundColor: theme.backgroundRoot }]}>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.backgroundRoot },
+            ]}
+          >
             <ThemedText type="h3" style={styles.modalTitle}>
               Choose Your Week
             </ThemedText>
-            <ThemedText style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
+            <ThemedText
+              style={[styles.modalSubtitle, { color: theme.textSecondary }]}
+            >
               Match your capacity to your week
             </ThemedText>
 
             {ROOMS.map((r) => {
               const rConfig = getRoomConfig(r);
-              const rColor = theme[`room${r.charAt(0).toUpperCase() + r.slice(1)}` as keyof typeof theme] as string;
+              const rColor = theme[
+                `room${r.charAt(0).toUpperCase() + r.slice(1)}` as keyof typeof theme
+              ] as string;
               const isSelected = r === room;
 
               return (
@@ -103,12 +140,24 @@ export function WeeklyRoomSection({ room }: WeeklyRoomSectionProps) {
                 >
                   <View style={styles.roomOptionHeader}>
                     <Feather name={rConfig.icon} size={20} color={theme.text} />
-                    <ThemedText style={styles.roomOptionLabel}>{rConfig.label}</ThemedText>
+                    <ThemedText style={styles.roomOptionLabel}>
+                      {rConfig.label}
+                    </ThemedText>
                     {isSelected ? (
-                      <Feather name="check" size={18} color={theme.primary} style={styles.checkIcon} />
+                      <Feather
+                        name="check"
+                        size={18}
+                        color={theme.primary}
+                        style={styles.checkIcon}
+                      />
                     ) : null}
                   </View>
-                  <ThemedText style={[styles.roomOptionDesc, { color: theme.textSecondary }]}>
+                  <ThemedText
+                    style={[
+                      styles.roomOptionDesc,
+                      { color: theme.textSecondary },
+                    ]}
+                  >
                     {ROOM_DESCRIPTIONS[r]}
                   </ThemedText>
                 </Pressable>
@@ -117,9 +166,14 @@ export function WeeklyRoomSection({ room }: WeeklyRoomSectionProps) {
 
             <Pressable
               onPress={() => setShowSelector(false)}
-              style={[styles.cancelButton, { borderColor: theme.textSecondary }]}
+              style={[
+                styles.cancelButton,
+                { borderColor: theme.textSecondary },
+              ]}
             >
-              <ThemedText style={{ color: theme.textSecondary }}>Cancel</ThemedText>
+              <ThemedText style={{ color: theme.textSecondary }}>
+                Cancel
+              </ThemedText>
             </Pressable>
           </View>
         </Pressable>
@@ -134,6 +188,11 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     gap: Spacing.sm,
   },
+  compactCard: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -142,6 +201,11 @@ const styles = StyleSheet.create({
   label: {
     fontWeight: "700",
     fontSize: 17,
+    flex: 1,
+  },
+  compactLabel: {
+    fontWeight: "600",
+    fontSize: 14,
     flex: 1,
   },
   changeHint: {

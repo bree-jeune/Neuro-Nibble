@@ -8,6 +8,8 @@ import {
   ScrollView,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useHeaderHeight } from "@react-navigation/elements";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -107,6 +109,8 @@ function Orb({
 
 export default function QuietRoomScreen() {
   const { theme } = useTheme();
+  const headerHeight = useHeaderHeight();
+  const insets = useSafeAreaInsets();
   const quietRoomMode = useAppStore((s) => s.quietRoomMode);
   const setQuietRoomMode = useAppStore((s) => s.setQuietRoomMode);
   const reduceMotion = useAppStore((s) => s.reduceMotion);
@@ -115,7 +119,10 @@ export default function QuietRoomScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
-      contentContainerStyle={styles.contentContainer}
+      contentContainerStyle={[
+        styles.contentContainer,
+        { paddingTop: headerHeight + insets.top + Spacing.md },
+      ]}
       showsVerticalScrollIndicator={false}
     >
       <View
@@ -236,7 +243,8 @@ export default function QuietRoomScreen() {
 
 const styles = StyleSheet.create({
   contentContainer: {
-    padding: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.lg,
   },
   card: {
     borderWidth: 1,
