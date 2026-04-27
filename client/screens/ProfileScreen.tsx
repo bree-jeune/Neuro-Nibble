@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useLayoutEffect } from "react";
-import { View, StyleSheet, TextInput, Pressable, Switch, Alert, Modal } from "react-native";
+import { View, StyleSheet, TextInput, Pressable, Switch, Alert, Modal, Share } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { HeaderButton } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -44,6 +44,7 @@ export default function ProfileScreen() {
     tasks,
     activeDays,
     firstUseDate,
+    dopamineMenu,
   } = useAppStore();
   const showSnackbar = useSnackbarStore((s) => s.show);
 
@@ -131,6 +132,28 @@ export default function ProfileScreen() {
     }
     setHapticsEnabled(value);
   }, [setHapticsEnabled]);
+
+  const handleShareApp = useCallback(async () => {
+    triggerHaptic("light");
+    try {
+      await Share.share({
+        message:
+          "NeuroNibble — momentum in micro-doses. https://neuronibble.app",
+      });
+    } catch {
+      // User dismissed or share unavailable; nothing to do.
+    }
+  }, []);
+
+  const handleOpenDopamineMenu = useCallback(() => {
+    triggerHaptic("selection");
+    const parent = navigation.getParent();
+    if (parent) {
+      (parent as unknown as { navigate: (name: string) => void }).navigate(
+        "ReflectTab",
+      );
+    }
+  }, [navigation]);
 
   const handleResetData = useCallback(() => {
     Alert.alert(
@@ -224,6 +247,39 @@ export default function ProfileScreen() {
           ) : null}
         </View>
       </View>
+
+      <View style={[styles.streakCard, { backgroundColor: theme.backgroundDefault }]}>
+        <View style={styles.streakHeader}>
+          <Feather name="sunrise" size={22} color={theme.primary} />
+          <ThemedText style={styles.streakLabel}>
+            Days you've shown up
+          </ThemedText>
+        </View>
+        <ThemedText type="h1" style={[styles.streakNumber, { color: theme.primary }]}>
+          {activeDays.length}
+        </ThemedText>
+        <ThemedText style={[styles.streakHint, { color: theme.textSecondary }]}>
+          Gaps don't erase this.
+        </ThemedText>
+      </View>
+
+      <Pressable
+        onPress={handleOpenDopamineMenu}
+        accessibilityRole="button"
+        accessibilityLabel="Open dopamine menu"
+        style={[styles.linkRow, { backgroundColor: theme.backgroundDefault }]}
+      >
+        <View style={[styles.linkIcon, { backgroundColor: theme.primary }]}>
+          <Feather name="gift" size={18} color="#FFFFFF" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <ThemedText style={styles.linkTitle}>Your dopamine menu</ThemedText>
+          <ThemedText style={[styles.linkSubtitle, { color: theme.textSecondary }]}>
+            {dopamineMenu.length} {dopamineMenu.length === 1 ? "reward" : "rewards"} saved
+          </ThemedText>
+        </View>
+        <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+      </Pressable>
 
       <View style={styles.analyticsSection}>
         <ThemedText type="h3" style={styles.sectionTitle}>
@@ -344,12 +400,22 @@ export default function ProfileScreen() {
         )}
       </View>
 
+      <Pressable
+        onPress={handleShareApp}
+        accessibilityRole="button"
+        accessibilityLabel="Share NeuroNibble"
+        style={[styles.shareButton, { borderColor: theme.border }]}
+      >
+        <Feather name="share-2" size={16} color={theme.text} />
+        <ThemedText style={styles.shareButtonText}>Share NeuroNibble</ThemedText>
+      </Pressable>
+
       <View style={styles.footerSection}>
         <ThemedText style={[styles.footerText, { color: theme.textSecondary }]}>
           NeuroNibble v1.0
         </ThemedText>
         <ThemedText style={[styles.footerSubtext, { color: theme.textSecondary }]}>
-          Momentum in micro-doses
+          Made for brains like yours.
         </ThemedText>
       </View>
     </KeyboardAwareScrollViewCompat>
@@ -414,6 +480,21 @@ export default function ProfileScreen() {
               onValueChange={setEnergyCheckInEnabled}
               trackColor={{ false: theme.backgroundSecondary, true: theme.primary }}
             />
+          </View>
+
+          <View style={[styles.settingRow, styles.disabledRow, { borderBottomColor: theme.border }]}>
+            <View style={styles.settingInfo}>
+              <Feather name="bell" size={20} color={theme.textSecondary} />
+              <View style={styles.settingTextGroup}>
+                <ThemedText style={[styles.settingLabel, { color: theme.textSecondary }]}>
+                  Gentle reminders
+                </ThemedText>
+                <ThemedText style={[styles.settingDesc, { color: theme.textSecondary }]}>
+                  Coming soon
+                </ThemedText>
+              </View>
+            </View>
+            <Switch value={false} disabled />
           </View>
 
           <View style={styles.appearanceSection}>
@@ -706,5 +787,70 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xs,
     borderWidth: 1,
     alignItems: "center",
+  },
+  streakCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    gap: Spacing.xs,
+    marginBottom: Spacing.lg,
+  },
+  streakHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  streakLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  streakNumber: {
+    fontSize: 40,
+    fontWeight: "700",
+    lineHeight: 48,
+  },
+  streakHint: {
+    fontSize: 13,
+    fontStyle: "italic",
+  },
+  linkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  linkIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.xs,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  linkTitle: {
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  linkSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  shareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    marginTop: Spacing.md,
+  },
+  shareButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  disabledRow: {
+    opacity: 0.6,
   },
 });

@@ -7,6 +7,7 @@ import {
   FlatList,
   Keyboard,
   Modal,
+  ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -28,7 +29,13 @@ import { DynamicFooter } from "@/components/DynamicFooter";
 import { useAppStore } from "@/lib/store";
 import { parseBrainDumpToBites } from "@/lib/brainDumpParser";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
-import type { WeeklyRoom, ThoughtItem, DopamineCost } from "@/lib/types";
+import type {
+  WeeklyRoom,
+  ThoughtItem,
+  DopamineCost,
+  EnergyLevel,
+  Step,
+} from "@/lib/types";
 
 const THOUGHT_PLACEHOLDERS = [
   "What's weighing on you?",
@@ -39,6 +46,14 @@ const THOUGHT_PLACEHOLDERS = [
   "What would feel good to release?",
   "Thoughts, worries, random stuff...",
 ];
+
+// ── New type for the bites review state ─────────────────────────────────────
+type BitesReviewState = {
+  thought: ThoughtItem;
+  parsedTitle: string;
+  steps: Step[];
+  energyLevel: EnergyLevel;
+};
 
 export default function ReflectScreen() {
   const insets = useSafeAreaInsets();
@@ -73,6 +88,13 @@ export default function ReflectScreen() {
   const inputRef = useRef<TextInput>(null);
 
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+
+  // ── Bites review state ──────────────────────────────────────────────────
+  const [bitesReview, setBitesReview] = useState<BitesReviewState | null>(null);
+  const [reviewSteps, setReviewSteps] = useState<Step[]>([]);
+  const [reviewNewBiteText, setReviewNewBiteText] = useState("");
+  const [editingBiteId, setEditingBiteId] = useState<string | null>(null);
+  const [editingBiteText, setEditingBiteText] = useState("");
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -137,24 +159,78 @@ export default function ReflectScreen() {
     [archiveThought, showToastMessage],
   );
 
+  // ── CHANGED: open review modal instead of immediately converting ────────
   const handleBreakIntoBites = useCallback(
     (thought: ThoughtItem) => {
       const parsed = parseBrainDumpToBites(thought.text);
-      const taskId = convertThoughtToBites(
-        { ...thought, text: parsed.title },
-        parsed.steps,
-        parsed.suggestedEnergy,
-      );
+      // Close triage, open review
       setTriageThought(null);
-      setCreatedTaskId(taskId);
+      setBitesReview({
+        thought,
+        parsedTitle: parsed.title,
+        steps: parsed.steps,
+        energyLevel: parsed.suggestedEnergy,
+      });
+      setReviewSteps(parsed.steps);
+      setReviewNewBiteText("");
+      setEditingBiteId(null);
+      setEditingBiteText("");
     },
-    [convertThoughtToBites],
+    [],
   );
 
-  const handleGoToCreatedTask = useCallback(() => {
-    if (!createdTaskId) {
+  // ── NEW: confirm from review modal ──────────────────────────────────────
+  const handleConfirmBitesReview = useCallback(() => {
+    if (!bitesReview || reviewSteps.length === 0) return;
+    triggerHaptic("success");
+    const taskId = convertThoughtToBites(
+      { ...bitesReview.thought, text: bitesReview.parsedTitle },
+      reviewSteps,
+      bitesReview.energyLevel,
+    );
+    setBitesReview(null);
+    setCreatedTaskId(taskId);
+  }, [bitesReview, reviewSteps, convertThoughtToBites]);
+
+  const handleReviewRemoveBite = useCallback((stepId: string) => {
+    triggerHaptic("light");
+    setReviewSteps((prev) => prev.filter((s) => s.id !== stepId));
+  }, []);
+
+  const handleReviewAddBite = useCallback(() => {
+    if (!reviewNewBiteText.trim()) return;
+    triggerHaptic("light");
+    const newStep: Step = {
+      id: `review_${Date.now()}`,
+      text: reviewNewBiteText.trim(),
+      minutes: 5,
+      completed: false,
+    };
+    setReviewSteps((prev) => [...prev, newStep]);
+    setReviewNewBiteText("");
+  }, [reviewNewBiteText]);
+
+  const handleReviewStartEdit = useCallback((step: Step) => {
+    setEditingBiteId(step.id);
+    setEditingBiteText(step.text);
+  }, []);
+
+  const handleReviewSaveEdit = useCallback(() => {
+    if (!editingBiteId || !editingBiteText.trim()) {
+      setEditingBiteId(null);
       return;
     }
+    setReviewSteps((prev) =>
+      prev.map((s) =>
+        s.id === editingBiteId ? { ...s, text: editingBiteText.trim() } : s,
+      ),
+    );
+    setEditingBiteId(null);
+    setEditingBiteText("");
+  }, [editingBiteId, editingBiteText]);
+
+  const handleGoToCreatedTask = useCallback(() => {
+    if (!createdTaskId) return;
     triggerHaptic("selection");
     const taskId = createdTaskId;
     setCreatedTaskId(null);
@@ -368,6 +444,7 @@ export default function ReflectScreen() {
         </Animated.View>
       ) : null}
 
+      {/* ── TRIAGE MODAL (unchanged) ─────────────────────────────────────── */}
       <Modal
         visible={!!triageThought}
         transparent
@@ -451,6 +528,198 @@ export default function ReflectScreen() {
         </View>
       </Modal>
 
+      {/* ── BITES REVIEW MODAL (new) ─────────────────────────────────────── */}
+      <Modal
+        visible={!!bitesReview}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setBitesReview(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.reviewCard,
+              { backgroundColor: theme.backgroundDefault },
+            ]}
+          >
+            {/* Header */}
+            <View style={styles.reviewHeader}>
+              <ThemedText type="h3" style={styles.triageTitle}>
+                Here's what we broke it into
+              </ThemedText>
+              <ThemedText
+                numberOfLines={2}
+                style={[styles.reviewOriginalText, { color: theme.textSecondary }]}
+              >
+                {bitesReview?.thought.text}
+              </ThemedText>
+            </View>
+
+            {/* Scrollable bite list */}
+            <ScrollView
+              style={styles.reviewBiteList}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {reviewSteps.map((step, index) => (
+                <View
+                  key={step.id}
+                  style={[
+                    styles.reviewBiteItem,
+                    { backgroundColor: theme.backgroundSecondary },
+                  ]}
+                >
+                  {editingBiteId === step.id ? (
+                    <View style={styles.reviewBiteEditRow}>
+                      <TextInput
+                        style={[
+                          styles.reviewBiteEditInput,
+                          {
+                            color: theme.text,
+                            borderBottomColor: theme.primary,
+                          },
+                        ]}
+                        value={editingBiteText}
+                        onChangeText={setEditingBiteText}
+                        autoFocus
+                        onSubmitEditing={handleReviewSaveEdit}
+                        returnKeyType="done"
+                      />
+                      <Pressable onPress={handleReviewSaveEdit} hitSlop={8}>
+                        <Feather name="check" size={18} color={theme.primary} />
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <View style={styles.reviewBiteRow}>
+                      <View style={styles.reviewBiteNumberBadge}>
+                        <ThemedText
+                          style={[
+                            styles.reviewBiteNumber,
+                            { color: theme.primary },
+                          ]}
+                        >
+                          {index + 1}
+                        </ThemedText>
+                      </View>
+                      <Pressable
+                        style={styles.reviewBiteTextWrapper}
+                        onPress={() => handleReviewStartEdit(step)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Edit bite: ${step.text}`}
+                      >
+                        <ThemedText
+                          style={styles.reviewBiteText}
+                          numberOfLines={2}
+                        >
+                          {step.text}
+                        </ThemedText>
+                        <ThemedText
+                          style={[
+                            styles.reviewBiteMinutes,
+                            { color: theme.textSecondary },
+                          ]}
+                        >
+                          {step.minutes} min · tap to edit
+                        </ThemedText>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => handleReviewRemoveBite(step.id)}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove bite: ${step.text}`}
+                      >
+                        <Feather
+                          name="x"
+                          size={16}
+                          color={theme.textSecondary}
+                        />
+                      </Pressable>
+                    </View>
+                  )}
+                </View>
+              ))}
+
+              {/* Add new bite inline */}
+              <View
+                style={[
+                  styles.reviewAddRow,
+                  { borderTopColor: theme.border },
+                ]}
+              >
+                <TextInput
+                  style={[styles.reviewAddInput, { color: theme.text }]}
+                  placeholder="+ Add a bite..."
+                  placeholderTextColor={theme.textSecondary}
+                  value={reviewNewBiteText}
+                  onChangeText={setReviewNewBiteText}
+                  onSubmitEditing={handleReviewAddBite}
+                  returnKeyType="done"
+                />
+                {reviewNewBiteText.trim() ? (
+                  <Pressable onPress={handleReviewAddBite} hitSlop={8}>
+                    <Feather
+                      name="plus-circle"
+                      size={18}
+                      color={theme.primary}
+                    />
+                  </Pressable>
+                ) : null}
+              </View>
+            </ScrollView>
+
+            {/* CTAs */}
+            <View style={styles.reviewActions}>
+              <Pressable
+                onPress={handleConfirmBitesReview}
+                disabled={reviewSteps.length === 0}
+                accessibilityRole="button"
+                style={[
+                  styles.primaryTriageButton,
+                  {
+                    backgroundColor:
+                      reviewSteps.length === 0
+                        ? theme.backgroundSecondary
+                        : theme.primary,
+                  },
+                ]}
+              >
+                <Feather
+                  name="arrow-right"
+                  size={18}
+                  color={
+                    reviewSteps.length === 0 ? theme.textSecondary : "#FFFFFF"
+                  }
+                />
+                <ThemedText
+                  style={[
+                    styles.primaryTriageButtonText,
+                    {
+                      color:
+                        reviewSteps.length === 0
+                          ? theme.textSecondary
+                          : "#FFFFFF",
+                    },
+                  ]}
+                >
+                  Save these bites
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={() => setBitesReview(null)}
+                style={styles.dismissButton}
+              >
+                <ThemedText
+                  style={{ color: theme.textSecondary, fontSize: 14 }}
+                >
+                  Start over
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── CREATED TASK CONFIRMATION (unchanged) ────────────────────────── */}
       <Modal
         visible={!!createdTaskId}
         transparent
@@ -590,6 +859,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: Spacing.lg,
   },
+  // ── Triage modal styles (unchanged) ──────────────────────────────────────
   triageCard: {
     width: "100%",
     maxWidth: 380,
@@ -624,10 +894,16 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   primaryTriageButton: {
+    minHeight: 48,
+    borderRadius: BorderRadius.sm,
     borderWidth: 0,
+    paddingHorizontal: Spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
   },
   primaryTriageButtonText: {
-    color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "600",
   },
@@ -660,5 +936,86 @@ const styles = StyleSheet.create({
     minHeight: 44,
     alignItems: "center",
     justifyContent: "center",
+  },
+  // ── Bites review modal styles (new) ──────────────────────────────────────
+  reviewCard: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    maxHeight: "85%",
+    gap: Spacing.md,
+  },
+  reviewHeader: {
+    gap: Spacing.xs,
+  },
+  reviewOriginalText: {
+    fontSize: 13,
+    fontStyle: "italic",
+    lineHeight: 18,
+    textAlign: "center",
+  },
+  reviewBiteList: {
+    flexGrow: 0,
+    maxHeight: 320,
+  },
+  reviewBiteItem: {
+    borderRadius: BorderRadius.xs,
+    marginBottom: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+  },
+  reviewBiteRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  reviewBiteNumberBadge: {
+    width: 22,
+    height: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reviewBiteNumber: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  reviewBiteTextWrapper: {
+    flex: 1,
+  },
+  reviewBiteText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  reviewBiteMinutes: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+  reviewBiteEditRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  reviewBiteEditInput: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: Spacing.xs,
+    borderBottomWidth: 1,
+  },
+  reviewAddRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderTopWidth: 1,
+    paddingTop: Spacing.md,
+    marginTop: Spacing.xs,
+    gap: Spacing.sm,
+  },
+  reviewAddInput: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: Spacing.sm,
+  },
+  reviewActions: {
+    gap: Spacing.sm,
   },
 });

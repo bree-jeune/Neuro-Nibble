@@ -23,6 +23,7 @@ import { WeeklyRoomSection } from "@/components/WeeklyRoomSection";
 import { RecentTaskCard } from "@/components/RecentTaskCard";
 import { RegulationBreathingCard } from "@/components/RegulationBreathingCard";
 import { SupportToolCard } from "@/components/SupportToolCard";
+import { AmbientPresenceStrip } from "@/components/AmbientPresenceStrip";
 import { useAppStore } from "@/lib/store";
 import { useSnackbarStore } from "@/lib/snackbarStore";
 import { useAudio } from "@/lib/AudioContext";
@@ -48,6 +49,9 @@ export default function HomeScreen() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showEnergyCheck, setShowEnergyCheck] = useState(false);
   const [reflectionText, setReflectionText] = useState("");
+  const [endDayStep, setEndDayStep] = useState<1 | 2 | 3>(1);
+  const [endDayActions, setEndDayActions] = useState<string[]>([]);
+  const [endDayMood, setEndDayMood] = useState<string | null>(null);
 
   const {
     setEnergyLevel,
@@ -182,31 +186,85 @@ export default function HomeScreen() {
     setSelectedTask(null);
   }, [navigation, selectedTask]);
 
+  const openEndDay = useCallback(() => {
+    setEndDayStep(1);
+    setEndDayActions([]);
+    setEndDayMood(null);
+    setReflectionText("");
+    setShowEndDayModal(true);
+  }, []);
+
+  const closeEndDay = useCallback(() => {
+    setShowEndDayModal(false);
+  }, []);
+
   const handleEndDay = useCallback(() => {
     const prevCompleted = bookendCompleted;
     const prevLastDate = lastBookendDate;
 
     triggerHaptic("success");
 
-    if (reflectionText.trim()) {
-      addDailyReflection(reflectionText.trim());
+    const summaryParts: string[] = [];
+    if (endDayMood) summaryParts.push(`Leaving: ${endDayMood}`);
+    if (endDayActions.length > 0)
+      summaryParts.push(`Did: ${endDayActions.join(", ")}`);
+    if (reflectionText.trim()) summaryParts.push(reflectionText.trim());
+
+    if (summaryParts.length > 0) {
+      addDailyReflection(summaryParts.join(" · "));
     }
 
     setBookendCompleted(true);
     setShowEndDayModal(false);
     setReflectionText("");
+    setEndDayActions([]);
+    setEndDayMood(null);
+    setEndDayStep(1);
     showSnackbar("Day ended. Rest well.", () => {
       restoreBookendState(prevCompleted, prevLastDate);
     });
   }, [
     addDailyReflection,
     bookendCompleted,
+    endDayActions,
+    endDayMood,
     lastBookendDate,
     reflectionText,
     restoreBookendState,
     setBookendCompleted,
     showSnackbar,
   ]);
+
+  const toggleEndDayAction = useCallback((label: string) => {
+    triggerHaptic("selection");
+    setEndDayActions((prev) =>
+      prev.includes(label) ? prev.filter((a) => a !== label) : [...prev, label],
+    );
+  }, []);
+
+  const closingMessage = (() => {
+    if (!endDayMood) return null;
+    const onlyNothing =
+      endDayActions.length === 1 &&
+      endDayActions[0] === "Nothing — and that's okay too";
+    const noActions = endDayActions.length === 0;
+    if (endDayMood === "Rough one" || onlyNothing || noActions) {
+      return {
+        title: "You were here. That counts.",
+        body: "Tomorrow is a different day.",
+      };
+    }
+    if (endDayMood === "Pretty good actually") {
+      return {
+        title: "Look at you. Seriously.",
+        body: "Carry that with you.",
+      };
+    }
+    return {
+      title: "You showed up. That's the whole thing.",
+      body: "Rest is part of the work.",
+    };
+  })();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -411,7 +469,7 @@ export default function HomeScreen() {
         style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
         contentContainerStyle={{
           paddingTop: headerHeight + Spacing.sm,
-          paddingBottom: tabBarHeight + Spacing.xl + 24,
+          paddingBottom: tabBarHeight + Spacing.xl + 64,
           paddingHorizontal: Spacing.lg,
           gap: Spacing.lg,
         }}
@@ -473,7 +531,7 @@ export default function HomeScreen() {
 
         {hasStartedToday && !isBookendForToday ? (
           <Pressable
-            onPress={() => setShowEndDayModal(true)}
+            onPress={openEndDay}
             accessibilityRole="button"
             accessibilityLabel="End today"
             style={[
@@ -505,104 +563,235 @@ export default function HomeScreen() {
         <DynamicFooter screen="home" />
       </ScrollView>
 
+      <AmbientPresenceStrip />
+
       <Modal
         visible={showEndDayModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowEndDayModal(false)}
+        onRequestClose={closeEndDay}
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowEndDayModal(false)}
-        >
-          <View
+        <Pressable style={styles.modalOverlay} onPress={closeEndDay}>
+          <Pressable
             style={[
               styles.modalContent,
               { backgroundColor: theme.backgroundRoot },
             ]}
+            onPress={() => {}}
           >
-            <Feather
-              name="moon"
-              size={48}
-              color={theme.secondary}
-              style={styles.modalIcon}
-            />
-
             <ThemedText type="h2" style={styles.modalTitle}>
-              End today?
+              Before you go
             </ThemedText>
-
             <ThemedText
               style={[styles.modalMessage, { color: theme.textSecondary }]}
             >
-              Close out gently. No judgment, no scorecard.
+              This takes 30 seconds. Or skip it.
             </ThemedText>
 
-            {completedToday > 0 ? (
-              <View
-                style={[
-                  styles.statCard,
-                  { backgroundColor: theme.backgroundDefault },
-                ]}
-              >
-                <ThemedText style={styles.statNumber}>
-                  {completedToday}
+            <View style={styles.endDayProgress}>
+              {[1, 2, 3].map((n) => (
+                <View
+                  key={n}
+                  style={[
+                    styles.endDayProgressDot,
+                    {
+                      backgroundColor:
+                        n === endDayStep
+                          ? theme.primary
+                          : theme.backgroundSecondary,
+                      width: n === endDayStep ? 24 : 8,
+                    },
+                  ]}
+                />
+              ))}
+            </View>
+
+            {endDayStep === 1 ? (
+              <View style={styles.endDayStepWrap}>
+                <ThemedText style={styles.endDayQuestion}>
+                  What did you do today?
                 </ThemedText>
                 <ThemedText
-                  style={[styles.statLabel, { color: theme.textSecondary }]}
+                  style={[
+                    styles.endDayHint,
+                    { color: theme.textSecondary },
+                  ]}
                 >
-                  {completedToday === 1
-                    ? "bite done today"
-                    : "bites done today"}
+                  Pick any that fit. Or skip.
                 </ThemedText>
+                <View style={styles.endDayPillWrap}>
+                  {[
+                    "Finished a bite",
+                    "Showed up even though it was hard",
+                    "Did a dopamine break",
+                    "Used the brain dump",
+                    "Rested on purpose",
+                    "Nothing — and that's okay too",
+                  ].map((label) => {
+                    const selected = endDayActions.includes(label);
+                    return (
+                      <Pressable
+                        key={label}
+                        onPress={() => toggleEndDayAction(label)}
+                        style={[
+                          styles.endDayPill,
+                          {
+                            backgroundColor: selected
+                              ? theme.primary
+                              : theme.backgroundDefault,
+                            borderColor: selected
+                              ? theme.primary
+                              : theme.border,
+                          },
+                        ]}
+                      >
+                        <ThemedText
+                          style={{
+                            color: selected ? "#FFFFFF" : theme.text,
+                            fontSize: 13,
+                            fontWeight: selected ? "600" : "400",
+                          }}
+                        >
+                          {label}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Pressable
+                  onPress={() => {
+                    triggerHaptic("light");
+                    setEndDayStep(2);
+                  }}
+                  style={[
+                    styles.confirmButton,
+                    { backgroundColor: theme.primary },
+                  ]}
+                >
+                  <ThemedText style={styles.confirmButtonText}>Next</ThemedText>
+                </Pressable>
+                <Pressable onPress={handleEndDay} style={styles.cancelButton}>
+                  <ThemedText style={{ color: theme.textSecondary }}>
+                    Skip all of this
+                  </ThemedText>
+                </Pressable>
               </View>
             ) : null}
 
-            <View style={styles.reflectionSection}>
-              <ThemedText
-                style={[styles.reflectionLabel, { color: theme.textSecondary }]}
-              >
-                Anything on your mind? (optional)
-              </ThemedText>
-              <TextInput
-                style={[
-                  styles.reflectionInput,
-                  {
-                    backgroundColor: theme.inputBackground,
-                    color: theme.text,
-                    borderColor: theme.border,
-                  },
-                ]}
-                placeholder="A small win, a thought, anything..."
-                placeholderTextColor={theme.textSecondary}
-                value={reflectionText}
-                onChangeText={setReflectionText}
-                multiline
-                numberOfLines={3}
-              />
-            </View>
+            {endDayStep === 2 ? (
+              <View style={styles.endDayStepWrap}>
+                <ThemedText style={styles.endDayQuestion}>
+                  How are you leaving?
+                </ThemedText>
+                <View style={styles.endDayMoodGrid}>
+                  {[
+                    { emoji: "😮‍💨", label: "Tired but okay" },
+                    { emoji: "😌", label: "Neutral" },
+                    { emoji: "🙂", label: "Pretty good actually" },
+                    { emoji: "😔", label: "Rough one" },
+                  ].map((opt) => {
+                    const selected = endDayMood === opt.label;
+                    return (
+                      <Pressable
+                        key={opt.label}
+                        onPress={() => {
+                          triggerHaptic("selection");
+                          setEndDayMood(opt.label);
+                        }}
+                        style={[
+                          styles.endDayMoodCard,
+                          {
+                            backgroundColor: selected
+                              ? theme.primary
+                              : theme.backgroundDefault,
+                            borderColor: selected
+                              ? theme.primary
+                              : theme.border,
+                          },
+                        ]}
+                      >
+                        <ThemedText style={styles.endDayMoodEmoji}>
+                          {opt.emoji}
+                        </ThemedText>
+                        <ThemedText
+                          style={{
+                            color: selected ? "#FFFFFF" : theme.text,
+                            fontSize: 12,
+                            textAlign: "center",
+                            fontWeight: selected ? "600" : "400",
+                          }}
+                        >
+                          {opt.label}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Pressable
+                  onPress={() => {
+                    triggerHaptic("light");
+                    setEndDayStep(3);
+                  }}
+                  disabled={!endDayMood}
+                  style={[
+                    styles.confirmButton,
+                    {
+                      backgroundColor: endDayMood
+                        ? theme.primary
+                        : theme.backgroundSecondary,
+                    },
+                  ]}
+                >
+                  <ThemedText
+                    style={[
+                      styles.confirmButtonText,
+                      { color: endDayMood ? "#FFFFFF" : theme.textSecondary },
+                    ]}
+                  >
+                    Next
+                  </ThemedText>
+                </Pressable>
+                <Pressable onPress={handleEndDay} style={styles.cancelButton}>
+                  <ThemedText style={{ color: theme.textSecondary }}>
+                    Skip all of this
+                  </ThemedText>
+                </Pressable>
+              </View>
+            ) : null}
 
-            <Pressable
-              onPress={handleEndDay}
-              style={[
-                styles.confirmButton,
-                { backgroundColor: theme.secondary },
-              ]}
-            >
-              <ThemedText style={styles.confirmButtonText}>
-                End Today
-              </ThemedText>
-            </Pressable>
-
-            <Pressable
-              onPress={() => setShowEndDayModal(false)}
-              style={styles.cancelButton}
-            >
-              <ThemedText style={{ color: theme.textSecondary }}>
-                Not yet
-              </ThemedText>
-            </Pressable>
-          </View>
+            {endDayStep === 3 && closingMessage ? (
+              <View style={styles.endDayStepWrap}>
+                <Feather
+                  name="moon"
+                  size={36}
+                  color={theme.secondary}
+                  style={styles.modalIcon}
+                />
+                <ThemedText type="h3" style={styles.endDayClosingTitle}>
+                  {closingMessage.title}
+                </ThemedText>
+                <ThemedText
+                  style={[
+                    styles.endDayClosingBody,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  {closingMessage.body}
+                </ThemedText>
+                <Pressable
+                  onPress={handleEndDay}
+                  style={[
+                    styles.confirmButton,
+                    { backgroundColor: theme.primary },
+                  ]}
+                >
+                  <ThemedText style={styles.confirmButtonText}>
+                    Close out
+                  </ThemedText>
+                </Pressable>
+              </View>
+            ) : null}
+          </Pressable>
         </Pressable>
       </Modal>
 
@@ -921,5 +1110,68 @@ const styles = StyleSheet.create({
   },
   skipEnergyButton: {
     padding: Spacing.sm,
+  },
+  endDayProgress: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: Spacing.lg,
+  },
+  endDayProgressDot: {
+    height: 8,
+    borderRadius: 4,
+  },
+  endDayStepWrap: {
+    width: "100%",
+    gap: Spacing.md,
+  },
+  endDayQuestion: {
+    fontSize: 17,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  endDayHint: {
+    fontSize: 13,
+    fontStyle: "italic",
+    textAlign: "center",
+  },
+  endDayPillWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.xs,
+    justifyContent: "center",
+  },
+  endDayPill: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+  },
+  endDayMoodGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+    justifyContent: "center",
+  },
+  endDayMoodCard: {
+    width: "47%",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  endDayMoodEmoji: {
+    fontSize: 28,
+  },
+  endDayClosingTitle: {
+    textAlign: "center",
+  },
+  endDayClosingBody: {
+    fontSize: 14,
+    textAlign: "center",
+    fontStyle: "italic",
   },
 });
