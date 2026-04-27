@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { View, FlatList, StyleSheet, Pressable } from "react-native";
+import { View, FlatList, StyleSheet, Pressable, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -11,6 +11,7 @@ import { triggerHaptic } from "@/lib/haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { TaskCard } from "@/components/TaskCard";
 import { ContextualBanner } from "@/components/ContextualBanner";
+import { AmbientPresenceStrip } from "@/components/AmbientPresenceStrip";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useAppStore } from "@/lib/store";
@@ -27,11 +28,13 @@ export default function TasksScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [filter, setFilter] = useState<FilterType>("all");
+  const [showArchived, setShowArchived] = useState(false);
 
   const { tasks, deleteTask, restoreTask, toggleStepComplete, restoreStep, archiveTask, energyLevel, weeklyRoom } = useAppStore();
   const showSnackbar = useSnackbarStore((s) => s.show);
 
   const visibleTasks = tasks.filter((t) => !t.isArchived);
+  const archivedTasks = tasks.filter((t) => t.isArchived);
   const filteredTasks =
     filter === "all"
       ? visibleTasks
@@ -191,6 +194,57 @@ export default function TasksScreen() {
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
       />
+
+      {archivedTasks.length > 0 ? (
+        <View style={[styles.archivedSection, { borderTopColor: theme.border }]}>
+          <Pressable
+            onPress={() => {
+              triggerHaptic("selection");
+              setShowArchived((prev) => !prev);
+            }}
+            style={styles.archivedHeader}
+            accessibilityRole="button"
+            accessibilityLabel={`Archived tasks, ${archivedTasks.length}`}
+          >
+            <ThemedText style={[styles.archivedHeaderText, { color: theme.textSecondary }]}>
+              Archived ({archivedTasks.length})
+            </ThemedText>
+            <Feather
+              name={showArchived ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={theme.textSecondary}
+            />
+          </Pressable>
+          {showArchived ? (
+            <ScrollView
+              style={styles.archivedList}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+            >
+              {archivedTasks.map((task) => (
+                <View
+                  key={task.id}
+                  style={[
+                    styles.archivedRow,
+                    { backgroundColor: theme.backgroundDefault },
+                  ]}
+                >
+                  <ThemedText style={styles.archivedTitle} numberOfLines={1}>
+                    {task.title}
+                  </ThemedText>
+                  <ThemedText
+                    style={[styles.archivedBadge, { color: theme.textSecondary }]}
+                  >
+                    ✓ done
+                  </ThemedText>
+                </View>
+              ))}
+            </ScrollView>
+          ) : null}
+        </View>
+      ) : null}
+
+      <AmbientPresenceStrip />
     </View>
   );
 }
@@ -253,5 +307,40 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 16,
+  },
+  archivedSection: {
+    borderTopWidth: 1,
+  },
+  archivedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+  },
+  archivedHeaderText: {
+    fontSize: 14,
+  },
+  archivedList: {
+    maxHeight: 200,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+  },
+  archivedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.xs,
+    marginBottom: Spacing.xs,
+  },
+  archivedTitle: {
+    flex: 1,
+    fontSize: 14,
+    marginRight: Spacing.sm,
+  },
+  archivedBadge: {
+    fontSize: 12,
+    fontWeight: "500",
   },
 });
