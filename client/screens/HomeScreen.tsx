@@ -1,12 +1,5 @@
 import React, { useState, useCallback, useLayoutEffect, useMemo } from "react";
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Pressable,
-  Modal,
-  TextInput,
-} from "react-native";
+import { View, ScrollView, StyleSheet, Pressable, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -23,7 +16,7 @@ import { WeeklyRoomSection } from "@/components/WeeklyRoomSection";
 import { RecentTaskCard } from "@/components/RecentTaskCard";
 import { RegulationBreathingCard } from "@/components/RegulationBreathingCard";
 import { SupportToolCard } from "@/components/SupportToolCard";
-import { AmbientPresenceStrip } from "@/components/AmbientPresenceStrip";
+import { PresenceStrip } from "@/components/PresenceStrip";
 import { useAppStore } from "@/lib/store";
 import { useSnackbarStore } from "@/lib/snackbarStore";
 import { useAudio } from "@/lib/AudioContext";
@@ -451,7 +444,15 @@ export default function HomeScreen() {
       />
     );
 
-    const breathingTool = <RegulationBreathingCard key="breathe" />;
+    const breathingTool = (
+      <RegulationBreathingCard
+        key="breathe"
+        onPress={() => {
+          triggerHaptic("selection");
+          navigation.navigate("Breathing");
+        }}
+      />
+    );
 
     const toolsByRoom: Record<WeeklyRoom, React.ReactNode[]> = {
       chaos: [breathingTool, brainDumpTool, quietRoomTool],
@@ -563,7 +564,7 @@ export default function HomeScreen() {
         <DynamicFooter screen="home" />
       </ScrollView>
 
-      <AmbientPresenceStrip />
+      <PresenceStrip variant="with you" />
 
       <Modal
         visible={showEndDayModal}
@@ -612,10 +613,7 @@ export default function HomeScreen() {
                   What did you do today?
                 </ThemedText>
                 <ThemedText
-                  style={[
-                    styles.endDayHint,
-                    { color: theme.textSecondary },
-                  ]}
+                  style={[styles.endDayHint, { color: theme.textSecondary }]}
                 >
                   Pick any that fit. Or skip.
                 </ThemedText>

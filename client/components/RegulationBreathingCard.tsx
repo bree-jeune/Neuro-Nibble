@@ -1,21 +1,22 @@
 import React from "react";
 
-import { BreathingPacer } from "@/components/BreathingPacer";
 import { SupportToolCard } from "@/components/SupportToolCard";
 
-const keepCardAccessible = () => undefined;
+interface RegulationBreathingCardProps {
+  onPress: () => void;
+}
 
-export function RegulationBreathingCard() {
+export function RegulationBreathingCard({
+  onPress,
+}: RegulationBreathingCardProps) {
   return (
     <SupportToolCard
       title="Breathe first"
-      subtitle="Hold for a haptic breathing cue."
+      subtitle="Open a guided 4-4-4-4 breathing reset."
       icon="wind"
       featured
-      onPress={keepCardAccessible}
-      accessibilityLabel="Breathe first. Hold for a haptic breathing cue."
-    >
-      <BreathingPacer size={44} showHint={false} />
-    </SupportToolCard>
+      onPress={onPress}
+      accessibilityLabel="Breathe first. Open a guided breathing reset."
+    />
   );
 }

@@ -1,6 +1,7 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import MainTabNavigator from "@/navigation/MainTabNavigator";
+import BreathingScreen from "@/screens/BreathingScreen";
 import BreakItDownScreen from "@/screens/BreakItDownScreen";
 import OnboardingScreen from "@/screens/OnboardingScreen";
 import QuietRoomScreen from "@/screens/QuietRoomScreen";
@@ -12,6 +13,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   WeeklyRoomSetup: { mode?: "initial" | "change" } | undefined;
   Main: undefined;
+  Breathing: undefined;
   BreakItDown: { taskId?: string } | undefined;
   QuietRoom: undefined;
 };
@@ -63,6 +65,14 @@ export default function RootStackNavigator() {
         options={{
           presentation: "modal",
           headerTitle: "Break It Down",
+        }}
+      />
+      <Stack.Screen
+        name="Breathing"
+        component={BreathingScreen}
+        options={{
+          presentation: "modal",
+          headerShown: false,
         }}
       />
       <Stack.Screen

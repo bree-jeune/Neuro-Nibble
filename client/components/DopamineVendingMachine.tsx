@@ -187,7 +187,7 @@ export function DopamineVendingMachine({
         onPress={handleOpenReward}
         disabled={items.length === 0}
         accessibilityRole="button"
-        accessibilityLabel="Vend reward"
+        accessibilityLabel="Pick a reward"
         style={[
           styles.spinButton,
           {
@@ -207,7 +207,7 @@ export function DopamineVendingMachine({
             { color: items.length === 0 ? theme.textSecondary : "#FFFFFF" },
           ]}
         >
-          Vend reward
+          Pick a reward
         </ThemedText>
       </Pressable>
 
