@@ -103,6 +103,17 @@ export default function HomeScreen() {
     [tasks],
   );
 
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const hasStartedToday = useMemo(
+    () =>
+      tasks.some(
+        (task) =>
+          task.createdAt?.startsWith(today) ||
+          task.lastWorkedOn?.startsWith(today),
+      ) || completedToday > 0,
+    [completedToday, tasks, today],
+  );
+
   const handleTaskPress = useCallback(
     (task: Task) => {
       triggerHaptic("selection");
@@ -190,6 +201,9 @@ export default function HomeScreen() {
   );
 
   const renderMainAction = () => {
+    const isBuildEmpty =
+      weeklyRoom === "build" && incompleteCount === 0 && completedToday === 0;
+
     if (weeklyRoom === "chaos") {
       return (
         <View
@@ -199,22 +213,20 @@ export default function HomeScreen() {
           ]}
         >
           <ThemedText type="h3" style={styles.mainTitle}>
-            What’s the next smallest useful thing?
+            Start with one thing
           </ThemedText>
           <ThemedText
             style={[styles.mainSubtitle, { color: theme.textSecondary }]}
           >
-            One tiny move is enough.
+            We’ll make it smaller.
           </ThemedText>
           <Pressable
             onPress={() => navigation.navigate("BreakItDown")}
             accessibilityRole="button"
-            accessibilityLabel="Deal with one thing"
+            accessibilityLabel="Start with one thing"
             style={[styles.mainButton, { backgroundColor: theme.primary }]}
           >
-            <ThemedText style={styles.mainButtonText}>
-              Deal with one thing
-            </ThemedText>
+            <ThemedText style={styles.mainButtonText}>Start</ThemedText>
           </Pressable>
           <Pressable
             onPress={() => navigateToTab("ReflectTab")}
@@ -223,7 +235,7 @@ export default function HomeScreen() {
             <ThemedText
               style={[styles.secondaryLinkText, { color: theme.textSecondary }]}
             >
-              Brain dump first →
+              Dump thoughts first →
             </ThemedText>
           </Pressable>
         </View>
@@ -239,12 +251,12 @@ export default function HomeScreen() {
           ]}
         >
           <ThemedText type="h3" style={styles.mainTitle}>
-            Gentle next step
+            Choose one gentle bite
           </ThemedText>
           <ThemedText
             style={[styles.mainSubtitle, { color: theme.textSecondary }]}
           >
-            You can stop after one bite. That still counts.
+            You can stop after that.
           </ThemedText>
           <Pressable
             onPress={() =>
@@ -253,12 +265,10 @@ export default function HomeScreen() {
                 : navigation.navigate("BreakItDown")
             }
             accessibilityRole="button"
-            accessibilityLabel="Choose one gentle bite"
+            accessibilityLabel="Start one gentle bite"
             style={[styles.mainButton, { backgroundColor: theme.primary }]}
           >
-            <ThemedText style={styles.mainButtonText}>
-              Choose one gentle bite
-            </ThemedText>
+            <ThemedText style={styles.mainButtonText}>Start</ThemedText>
           </Pressable>
         </View>
       );
@@ -273,33 +283,41 @@ export default function HomeScreen() {
           ]}
         >
           <ThemedText type="h3" style={styles.mainTitle}>
-            Build from momentum
+            {isBuildEmpty ? "Start momentum" : "Build from momentum"}
           </ThemedText>
-          <View style={styles.statRow}>
-            <View style={styles.statBlock}>
-              <ThemedText type="h2" style={{ color: theme.primary }}>
-                {incompleteCount}
-              </ThemedText>
-              <ThemedText
-                style={[styles.statLabel, { color: theme.textSecondary }]}
-              >
-                active tasks
-              </ThemedText>
+          {isBuildEmpty ? (
+            <ThemedText
+              style={[styles.mainSubtitle, { color: theme.textSecondary }]}
+            >
+              One small move creates the trail.
+            </ThemedText>
+          ) : (
+            <View style={styles.statRow}>
+              <View style={styles.statBlock}>
+                <ThemedText type="h2" style={{ color: theme.primary }}>
+                  {incompleteCount}
+                </ThemedText>
+                <ThemedText
+                  style={[styles.statLabel, { color: theme.textSecondary }]}
+                >
+                  active tasks
+                </ThemedText>
+              </View>
+              <View
+                style={[styles.statDivider, { backgroundColor: theme.border }]}
+              />
+              <View style={styles.statBlock}>
+                <ThemedText type="h2" style={{ color: theme.primary }}>
+                  {completedToday}
+                </ThemedText>
+                <ThemedText
+                  style={[styles.statLabel, { color: theme.textSecondary }]}
+                >
+                  bites done today
+                </ThemedText>
+              </View>
             </View>
-            <View
-              style={[styles.statDivider, { backgroundColor: theme.border }]}
-            />
-            <View style={styles.statBlock}>
-              <ThemedText type="h2" style={{ color: theme.primary }}>
-                {completedToday}
-              </ThemedText>
-              <ThemedText
-                style={[styles.statLabel, { color: theme.textSecondary }]}
-              >
-                bites done today
-              </ThemedText>
-            </View>
-          </View>
+          )}
           <Pressable
             onPress={() =>
               recentTasks[0]
@@ -307,10 +325,12 @@ export default function HomeScreen() {
                 : navigation.navigate("BreakItDown")
             }
             accessibilityRole="button"
-            accessibilityLabel="Keep momentum"
+            accessibilityLabel={isBuildEmpty ? "Start momentum" : "Keep going"}
             style={[styles.mainButton, { backgroundColor: theme.primary }]}
           >
-            <ThemedText style={styles.mainButtonText}>Keep momentum</ThemedText>
+            <ThemedText style={styles.mainButtonText}>
+              {isBuildEmpty ? "Start" : "Keep going"}
+            </ThemedText>
           </Pressable>
         </View>
       );
@@ -321,12 +341,12 @@ export default function HomeScreen() {
         style={[styles.mainCard, { backgroundColor: theme.backgroundDefault }]}
       >
         <ThemedText type="h3" style={styles.mainTitle}>
-          Repair mode
+          Pick one thing back up
         </ThemedText>
         <ThemedText
           style={[styles.mainSubtitle, { color: theme.textSecondary }]}
         >
-          No shame. Just pick one thing to re-enter.
+          No shame. Just re-enter.
         </ThemedText>
         <Pressable
           onPress={() =>
@@ -338,7 +358,7 @@ export default function HomeScreen() {
           accessibilityLabel="Pick one thing to re-enter"
           style={[styles.mainButton, { backgroundColor: theme.primary }]}
         >
-          <ThemedText style={styles.mainButtonText}>Pick one thing</ThemedText>
+          <ThemedText style={styles.mainButtonText}>Pick one</ThemedText>
         </Pressable>
       </View>
     );
@@ -349,7 +369,7 @@ export default function HomeScreen() {
       <ScrollView
         style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.lg,
+          paddingTop: headerHeight + Spacing.sm,
           paddingBottom: tabBarHeight + Spacing.xl + 24,
           paddingHorizontal: Spacing.lg,
         }}
@@ -365,14 +385,64 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.weeklyRoomWrapper}>
-          <WeeklyRoomSection room={weeklyRoom} />
+          <WeeklyRoomSection room={weeklyRoom} compact />
+        </View>
+
+        <View style={styles.choiceHeader}>
+          <ThemedText type="h3">What do you need?</ThemedText>
         </View>
 
         {renderMainAction()}
 
-        <QuietRoomPreviewCard
-          onPress={() => navigation.navigate("QuietRoom")}
-        />
+        <View style={styles.quickActionsGrid}>
+          <Pressable
+            onPress={() => navigation.navigate("BreakItDown")}
+            accessibilityRole="button"
+            accessibilityLabel="Start one thing"
+            style={[
+              styles.quickActionCard,
+              { backgroundColor: theme.backgroundDefault },
+            ]}
+          >
+            <ThemedText style={styles.quickActionTitle}>
+              Start one thing
+            </ThemedText>
+            <ThemedText
+              style={[
+                styles.quickActionSubtitle,
+                { color: theme.textSecondary },
+              ]}
+            >
+              Begin with the first tiny bite.
+            </ThemedText>
+          </Pressable>
+
+          <Pressable
+            onPress={() => navigateToTab("ReflectTab")}
+            accessibilityRole="button"
+            accessibilityLabel="Dump thoughts"
+            style={[
+              styles.quickActionCard,
+              { backgroundColor: theme.backgroundDefault },
+            ]}
+          >
+            <ThemedText style={styles.quickActionTitle}>
+              Dump thoughts
+            </ThemedText>
+            <ThemedText
+              style={[
+                styles.quickActionSubtitle,
+                { color: theme.textSecondary },
+              ]}
+            >
+              Offload mental noise first.
+            </ThemedText>
+          </Pressable>
+
+          <QuietRoomPreviewCard
+            onPress={() => navigation.navigate("QuietRoom")}
+          />
+        </View>
 
         {recentTasks.length > 0 ? (
           <View style={styles.section}>
@@ -389,7 +459,7 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {!bookendCompleted ? (
+        {hasStartedToday && !bookendCompleted ? (
           <Pressable
             onPress={() => setShowEndDayModal(true)}
             accessibilityRole="button"
@@ -418,28 +488,7 @@ export default function HomeScreen() {
               color={theme.textSecondary}
             />
           </Pressable>
-        ) : (
-          <View
-            style={[
-              styles.dayEndedCard,
-              { backgroundColor: theme.backgroundDefault },
-            ]}
-          >
-            <View style={styles.dayEndedLeft}>
-              <Feather name="check-circle" size={20} color={theme.success} />
-              <ThemedText style={styles.dayEndedText}>
-                Day ended. Rest well.
-              </ThemedText>
-            </View>
-            <Pressable onPress={() => restoreBookendState(false, "")}>
-              <ThemedText
-                style={[styles.dayEndedUndo, { color: theme.textSecondary }]}
-              >
-                undo
-              </ThemedText>
-            </Pressable>
-          </View>
-        )}
+        ) : null}
 
         <DynamicFooter screen="home" />
       </ScrollView>
@@ -661,10 +710,13 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   weeklyRoomWrapper: {
+    marginTop: Spacing.md,
+  },
+  choiceHeader: {
     marginTop: Spacing.lg,
   },
   mainCard: {
-    marginTop: Spacing.lg,
+    marginTop: Spacing.md,
     borderRadius: BorderRadius.sm,
     padding: Spacing.lg,
     gap: Spacing.sm,
@@ -701,6 +753,22 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginBottom: Spacing.md,
   },
+  quickActionsGrid: {
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
+  },
+  quickActionCard: {
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.md,
+    gap: Spacing.xs,
+  },
+  quickActionTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  quickActionSubtitle: {
+    fontSize: 13,
+  },
   endDayButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -726,28 +794,6 @@ const styles = StyleSheet.create({
   },
   endDaySubtitle: {
     fontSize: 14,
-  },
-  dayEndedCard: {
-    marginTop: Spacing.xl,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.sm,
-  },
-  dayEndedLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-    flex: 1,
-  },
-  dayEndedText: {
-    fontSize: 15,
-    fontStyle: "italic",
-  },
-  dayEndedUndo: {
-    fontSize: 13,
-    fontStyle: "italic",
   },
   statRow: {
     flexDirection: "row",

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { View, StyleSheet, Pressable, Animated, Easing } from "react-native";
+import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -83,102 +84,90 @@ export function QuietRoomPreviewCard({ onPress }: QuietRoomPreviewCardProps) {
   const { total } = usePresence();
 
   return (
-    <View
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Enter Quiet Room"
+      onPress={() => {
+        triggerHaptic("selection");
+        onPress();
+      }}
       style={[
         styles.card,
         { backgroundColor: theme.backgroundDefault, borderColor: theme.border },
       ]}
     >
-      <View style={styles.headerRow}>
-        <View>
+      <View style={styles.contentRow}>
+        <View style={styles.copyBlock}>
           <ThemedText type="h3" style={styles.title}>
             Quiet Room
           </ThemedText>
           <ThemedText style={[styles.presence, { color: theme.textSecondary }]}>
-            {total} here with you
+            {total} here with you · {MODE_LABELS[quietRoomMode]}
           </ThemedText>
         </View>
 
-        <View style={styles.orbRow}>
-          <Orb
-            size={9}
-            delay={0}
-            color={theme.primary}
-            reduceMotion={reduceMotion}
-          />
-          <Orb
-            size={12}
-            delay={300}
-            color={theme.primary}
-            reduceMotion={reduceMotion}
-          />
-          <Orb
-            size={8}
-            delay={700}
-            color={theme.primary}
-            reduceMotion={reduceMotion}
-          />
+        <View style={styles.rightSide}>
+          <View style={styles.orbRow}>
+            <Orb
+              size={8}
+              delay={0}
+              color={theme.primary}
+              reduceMotion={reduceMotion}
+            />
+            <Orb
+              size={10}
+              delay={300}
+              color={theme.primary}
+              reduceMotion={reduceMotion}
+            />
+            <Orb
+              size={7}
+              delay={700}
+              color={theme.primary}
+              reduceMotion={reduceMotion}
+            />
+          </View>
+          <Feather name="chevron-right" size={18} color={theme.textSecondary} />
         </View>
       </View>
-
-      <ThemedText style={[styles.modeLabel, { color: theme.textSecondary }]}>
-        Mode: {MODE_LABELS[quietRoomMode]}
-      </ThemedText>
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Enter Quiet Room"
-        onPress={() => {
-          triggerHaptic("selection");
-          onPress();
-        }}
-        style={[styles.button, { backgroundColor: theme.primary }]}
-      >
-        <ThemedText style={styles.buttonText}>Enter Room</ThemedText>
-      </Pressable>
-    </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
     marginTop: Spacing.lg,
-    padding: Spacing.md,
+    minHeight: 92,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
-    gap: Spacing.sm,
+    justifyContent: "center",
   },
-  headerRow: {
+  contentRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
+  copyBlock: {
+    flex: 1,
+    paddingRight: Spacing.sm,
+  },
   title: {
-    fontSize: 18,
+    fontSize: 17,
   },
   presence: {
     fontSize: 13,
     marginTop: 2,
   },
+  rightSide: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
   orbRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-  },
-  modeLabel: {
-    fontSize: 14,
-  },
-  button: {
-    minHeight: 44,
-    borderRadius: BorderRadius.xs,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "600",
+    gap: 6,
   },
 });
