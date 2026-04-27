@@ -17,7 +17,6 @@ import { EnergyCard } from "@/components/EnergyCard";
 import { WeeklyRoomSection } from "@/components/WeeklyRoomSection";
 import { RecentTaskCard } from "@/components/RecentTaskCard";
 import { DailyBookend } from "@/components/DailyBookend";
-import { AudioToggleButton } from "@/components/AudioToggleButton";
 import { useAppStore } from "@/lib/store";
 import { useSnackbarStore } from "@/lib/snackbarStore";
 import { useAudio } from "@/lib/AudioContext";
@@ -57,7 +56,7 @@ export default function HomeScreen() {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerRight: () => <AudioToggleButton />,
+      headerRight: () => null,
     });
   }, [navigation]);
 
